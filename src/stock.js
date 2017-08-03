@@ -54,7 +54,6 @@ class Chart {
         const init =
             {
                 // type 에 의존하는 속성값들
-                // - formatter
                 // - renderItem (renderForTypes 변수 참조.)
                 // - 항상최솟값을 같는 key 값을 반환하는 함수. (getMinForTypes 참조)
                 // - 항상최대값을 같는 key 값을 반환하는 함수. (getMaxForTypes 참조)
@@ -79,10 +78,6 @@ class Chart {
                     // : bottom
                     xLabelAlign: "bottom",
                     xLabelHeight: 30
-                },
-                formatters: {
-                    // candle : return key names : 'open', 'high', 'close', 'low'
-                    candle: item => ({ open: item.open, close: item.close, high: item.high, low: item.low })
                 },
                 dateFormatter: "MM-dd HH:mm"
             };
@@ -149,7 +144,7 @@ class Chart {
 
         // 레이어 메소드
 
-        const addLayer = (name, { type, data, formatter }) => { /* 라이브러리에 관련된 객체셋팅. */
+        const addLayer = (name, { type, data }) => { /* 라이브러리에 관련된 객체셋팅. */
             if (layers[name] !== undefined) {
                 console.error("Stock.js :: 이미 존재하는 레이어이름 입니다.");
                 return;
@@ -157,27 +152,18 @@ class Chart {
             let layer = makeCanvas();
 
             layer.type = type || init.layer.type;
-            layer.formatter = formatter || init.formatters[layer.type];
-            layer.data = data ? applyFormatter(data, layer.formatter) : [];
+            layer.data = data ? data : [];
 
             layers[name] = layer;
             render(layer);
         };
-        const setLayer = (name, { type, data, formatter }) => {
+        const setLayer = (name, { type, data }) => {
             let layer = layer[name];
 
             layer.type = type || layer.type;
-            layer.formatter = formater || layer.formatter;
-            layer.data = data ? applyFormatter(data, layer.formatter) : [];
+            layer.data = data ? data : [];
 
             render(layer);
-        };
-        const applyFormatter = (data, formatter) => {
-            let r = [];
-            for (let i = 0; i < data.length; i++) {
-                r.push(formatter(data[i]));
-            }
-            return r;
         };
 
         // 뷰포트 메소드
@@ -208,9 +194,9 @@ class Chart {
             renderAll();
         }
 
-        /* 레이어 화면출력 */
+        // 출력 메소드
         const render = layer => {
-            let { data, type, formatter, context, canvas } = layer;
+            let { data, type, context, canvas } = layer;
             let { width, height } = canvas;
 
             if (viewport[0] === undefined || viewport[1] === undefined) {
@@ -260,13 +246,11 @@ class Chart {
                 renderItem({ ctx: context, height: height - grid.bottom, x, itemWidth, min, max }, data[i]);
 
                 if (i === l - 1 || (viewport[1] - i) % 10 === 0) {
-
                     xLabelCtx.fillText(
                         applyDateFormatter(timeline[i], dateFormatter),
                         f(x + itemWidth * 0.5),
                         f(xLabelAlign === 'top' ? (xLabelHeight / 2) : height - (xLabelHeight / 2))
                     );
-
                 }
             }
 
