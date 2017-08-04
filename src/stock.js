@@ -1,23 +1,35 @@
 const applyDateFormatter = (d, f) => {
     return f.replace(/(yyyy|yy|MM|dd|hh|mm|ss)/gi, function ($1) {
         switch ($1) {
-            case "yyyy": return d.getFullYear();
-            case "yy": return zf(d.getFullYear() % 1000, 2);
-            case "MM": return zf(d.getMonth() + 1, 2);
-            case "dd": return zf(d.getDate(), 2);
-            case "HH": return zf(d.getHours(), 2);
-            case "hh": return zf((h = d.getHours() % 12) ? h : 12, 2);
-            case "mm": return zf(d.getMinutes(), 2);
-            case "ss": return zf(d.getSeconds(), 2);
-            default: return $1;
+            case "yyyy":
+                return d.getFullYear();
+            case "yy":
+                return zf(d.getFullYear() % 1000, 2);
+            case "MM":
+                return zf(d.getMonth() + 1, 2);
+            case "dd":
+                return zf(d.getDate(), 2);
+            case "HH":
+                return zf(d.getHours(), 2);
+            case "hh":
+                return zf((h = d.getHours() % 12) ? h : 12, 2);
+            case "mm":
+                return zf(d.getMinutes(), 2);
+            case "ss":
+                return zf(d.getSeconds(), 2);
+            default:
+                return $1;
         }
     });
 };
 const zf = (e, l) => {
     if (typeof e === "number") e = e.toString();
     if (typeof e === "string") {
-        var s = '', i = 0;
-        while (i++ < l - e.length) { s += "0"; }
+        var s = '',
+            i = 0;
+        while (i++ < l - e.length) {
+            s += "0";
+        }
         return s + e;
     }
 };
@@ -47,87 +59,125 @@ class Chart {
 
             context.translate(0.5, 0.5);
 
-            return { canvas, context };
+            return {
+                canvas,
+                context
+            };
         };
 
         /* initialize */
-        const init =
-            {
-                // type 에 의존하는 속성값들
-                // - renderItem (renderForTypes 변수 참조.)
-                // - 항상최솟값을 같는 key 값을 반환하는 함수. (getMinForTypes 참조)
-                // - 항상최대값을 같는 key 값을 반환하는 함수. (getMaxForTypes 참조)
-                // - style의 일부 속성들
-                type: 'candle',
-                grid: {
-                    top: 0,
-                    right: 100,
-                    bottom: 30,
-                    left: 100
-                },
-                style: {
-                    gap: 0.2,
-                    // yLabelAlign
-                    // : right
-                    // : left
-                    yLabelAlign: "left",
-                    yLabelWidth: 100,
+        const init = {
+            // type 에 의존하는 속성값들
+            // - renderItem (renderForTypes 변수 참조.)
+            // - 항상최솟값을 같는 key 값을 반환하는 함수. (getMinForTypes 참조)
+            // - 항상최대값을 같는 key 값을 반환하는 함수. (getMaxForTypes 참조)
+            // - style의 일부 속성들
+            type: 'candle',
+            grid: {
+                top: 0,
+                right: 100,
+                bottom: 30,
+                left: 0
+            },
+            padding: {
+                top: 50,
+                right: 0,
+                bottom: 50,
+                left: 0
+            },
+            style: {
+                gap: 0.2,
+                // yLabelAlign
+                // : right
+                // : left
+                yLabelAlign: "right",
+                yLabelWidth: 100,
 
-                    // xLabelAlign
-                    // : top
-                    // : bottom
-                    xLabelAlign: "bottom",
-                    xLabelHeight: 30
-                },
-                dateFormatter: "MM-dd HH:mm"
-            };
+                // xLabelAlign
+                // : top
+                // : bottom
+                xLabelAlign: "bottom",
+                xLabelHeight: 30
+            },
+            dateFormatter: "MM-dd HH:mm"
+        };
 
         /* Variable 정의 */
         let layers = {};
         let viewport = []; /* 0 : start / 1 : end */
         let timeline = [];
-        let { grid, style, dateFormatter } = init;
+        let {
+            grid,
+            padding,
+            style,
+            dateFormatter
+        } = init;
+        let min;
+        let max;
 
         // X,Y 축 캔버스 Context 정의
         // 라벨이 업데이트 될 때.
         // - setViewport 로 뷰포트가 업데이트 되었을 경우.
         // - addLayer 로 layer의 속성이 변경 되었을 경우.
         // - setTimeline 로 x축 값이 변경 되었을 경우.
-        const xLabelCtx = makeCanvas().context;
         const yLabelCtx = makeCanvas().context;
+        const xLabelCtx = makeCanvas().context;
 
-        /* 레이어 타입에 따른 메소드 정의 */
+        // Float 캔버스 Context 정의
+        const floatCtx = makeCanvas().context;
+
+        // 레이어 타입에 따른 메소드 정의
         const renderForTypes = {
-            candle: ({ ctx, x, itemWidth, height, min, max }, { open, close, high, low }) => {
-                let { top, bottom, left, right } = grid;
+            candle: ({
+                ctx,
+                itemWidth,
+                transform
+            }, {
+                open,
+                close,
+                high,
+                low
+            }) => {
+                let y = transform(Math.max(open, close)),
+                    h = transform(Math.min(open, close)) - y,
+                    t = transform(high),
+                    b = transform(low);
 
-                let y = top - map(Math.max(open, close), min, max, top, height),
-                    h = top - map(Math.min(open, close), min, max, top, height) - y,
-                    t = top - map(high, min, max, top, height),
-                    b = top - map(low, min, max, top, height);
-
-                ctx.beginPath();
-                ctx.moveTo(f(x + itemWidth * 0.5), f(t));
-                ctx.lineTo(f(x + itemWidth * 0.5), f(y));
-                ctx.closePath();
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.moveTo(f(x + itemWidth * 0.5), f(y + h));
-                ctx.lineTo(f(x + itemWidth * 0.5), f(b));
-                ctx.closePath();
-                ctx.stroke();
-
+                ctx.strokeStyle = close > open ? 'green' : 'red';
                 ctx.fillStyle = close > open ? 'green' : 'red';
-                ctx.fillRect(f(x + itemWidth * 0.1), f(y), f(itemWidth * 0.8), f(h));
-                ctx.strokeRect(f(x + itemWidth * 0.1), f(y), f(itemWidth * 0.8), f(h));
-            }
+
+                ctx.beginPath();
+                ctx.moveTo(f(itemWidth * 0.5), f(t));
+                ctx.lineTo(f(itemWidth * 0.5), f(y));
+                ctx.closePath();
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(f(itemWidth * 0.5), f(y + h));
+                ctx.lineTo(f(itemWidth * 0.5), f(b));
+                ctx.closePath();
+                ctx.stroke();
+
+                ctx.fillRect(f(itemWidth * 0.1), f(y), f(itemWidth * 0.8), f(h));
+                ctx.strokeRect(f(itemWidth * 0.1), f(y), f(itemWidth * 0.8), f(h));
+            },
+            line: ({
+                ctx,
+                itemWidth,
+                transform
+            }, data) => {
+                if (data === null) return;
+                let y = transform(data);
+                ctx.lineTo(f(itemWidth * 0.5), y);
+            },
         };
         const getMinForTypes = {
             candle: item => item.low,
+            line: item => item
         };
         const getMaxForTypes = {
             candle: item => item.high,
+            line: item => item
         };
 
         // 유틸 메소드
@@ -143,8 +193,10 @@ class Chart {
         const f = Math.floor;
 
         // 레이어 메소드
-
-        const addLayer = (name, { type, data }) => { /* 라이브러리에 관련된 객체셋팅. */
+        const addLayer = (name, {
+            type,
+            data
+        }) => { /* 라이브러리에 관련된 객체셋팅. */
             if (layers[name] !== undefined) {
                 console.error("Stock.js :: 이미 존재하는 레이어이름 입니다.");
                 return;
@@ -155,14 +207,18 @@ class Chart {
             layer.data = data ? data : [];
 
             layers[name] = layer;
-            render(layer);
+            updateMinMax();
         };
-        const setLayer = (name, { type, data }) => {
+        const setLayer = (name, {
+            type,
+            data
+        }) => {
             let layer = layer[name];
 
             layer.type = type || layer.type;
             layer.data = data ? data : [];
 
+            updateMinMax();
             render(layer);
         };
 
@@ -170,6 +226,7 @@ class Chart {
         const setViewport = (s, e) => {
             viewport[0] = Math.min(s, e);
             viewport[1] = Math.max(s, e);
+            updateMinMax();
             renderAll();
         };
         const getViewport = () => ([viewport[0], viewport[1]]);
@@ -186,7 +243,13 @@ class Chart {
         const setGrid = pGrid => {
             grid = overwrite(pGrid, grid);
             renderAll();
-        }
+        };
+
+        // 패딩 메소드
+        const setPadding = pPadding => {
+            padding = overwrite(pGrid, padding);
+            renderAll();
+        };
 
         // 스타일 메소드
         const setStyle = pStyle => {
@@ -194,89 +257,202 @@ class Chart {
             renderAll();
         }
 
+        const getTransformSize = () => ({
+            tWidth: wrapper.clientWidth - grid.right - grid.left,
+            tHeight: wrapper.clientHeight - grid.bottom - grid.top,
+        });
+        const updateMinMax = () => {
+            let arr = Object.keys(layers)
+                .map(key => {
+                    let layer = layers[key];
+                    let {
+                        data,
+                        type
+                    } = layer;
+                    let getMin = getMinForTypes[type];
+                    let getMax = getMaxForTypes[type];
+
+                    let min = Infinity,
+                        max = -Infinity;
+                    for (let i = viewport[0], l = viewport[1]; i < l; i++) {
+                        if(data[i] === null) continue;
+
+                        let _min = getMin(data[i]);
+                        let _max = getMax(data[i]);
+
+                        if (min > _min) min = _min;
+                        if (max < _max) max = _max;
+
+                    }
+
+                    return {
+                        min,
+                        max
+                    };
+                });
+
+            let _min = Infinity,
+                _max = -Infinity;
+            for (let i = 0; i < arr.length; i++) {
+                if (arr[i].min < _min) _min = arr[i].min;
+                if (arr[i].max > _max) _max = arr[i].max;
+            }
+
+            min = _min;
+            max = _max;
+        };
+
         // 출력 메소드
         const render = layer => {
-            let { data, type, context, canvas } = layer;
-            let { width, height } = canvas;
+            let {
+                data,
+                type,
+                context,
+                canvas
+            } = layer;
+            let width = wrapper.clientWidth,
+                height = wrapper.clientHeight;
 
             if (viewport[0] === undefined || viewport[1] === undefined) {
                 setViewport(0, timeline.length);
             }
 
-            /* 레이어 타입에 따른 메소드를 가져온다. */
+            // 레이어 타입에 따른 메소드를 가져온다.
             let renderItem = renderForTypes[type];
-            let getMin = getMinForTypes[type];
-            let getMax = getMaxForTypes[type];
-
-            let min = Infinity,
-                max = -Infinity;
-            for (let i = viewport[0], l = viewport[1]; i < l; i++) {
-
-                let _min = getMin(data[i]);
-                let _max = getMax(data[i]);
-
-                if (min > _min) min = _min;
-                if (max < _max) max = _max;
-
-            }
-            let itemWidth = (canvas.width - grid.right - grid.left) / (viewport[1] - viewport[0]);
 
             // 라벨 스타일
-            let { xLabelHeight, xLabelAlign, yLabelWidth, yLabelAlign } = style;
+            let {
+                xLabelHeight,
+                xLabelAlign,
+                yLabelWidth,
+                yLabelAlign
+            } = style;
+
+            // Transform Size
+            let {
+                tWidth,
+                tHeight,
+            } = getTransformSize();
+            let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
 
             context.save();
             xLabelCtx.save();
+            yLabelCtx.save();
 
             // Clear
             context.clearRect(-10, -10, width + 10, height + 10);
             xLabelCtx.clearRect(-10, -10, width + 10, height + 10);
+            yLabelCtx.clearRect(-10, -10, width + 10, height + 10);
 
             // Translate
-            context.translate(grid.left, height - grid.bottom);
+            context.translate(grid.left, tHeight + grid.top);
             xLabelCtx.translate(grid.left, 0);
+            yLabelCtx.translate(0, tHeight + grid.top);
 
             // Xlabel Settings
             xLabelCtx.textBaseline = "middle";
-            xLabelCtx.textAlign = "center";
+            xLabelCtx.textAlign = "left";
             xLabelCtx.font = "12px 'Apple SD Gothic Neo',arial,sans-serif";
 
-            for (let i = viewport[0], l = viewport[1]; i < l; i++) {
-                let x = (i - viewport[0]) * itemWidth;
+            let xLineY = f(xLabelAlign === 'top' ? xLabelHeight : height - xLabelHeight);
+            let xLineLabelY = xLabelAlign === 'top' ? (xLabelHeight / 2) : height - (xLabelHeight / 2);
 
-                renderItem({ ctx: context, height: height - grid.bottom, x, itemWidth, min, max }, data[i]);
+            xLabelCtx.strokeStyle = '#000';
+            xLabelCtx.beginPath();
+            xLabelCtx.moveTo(0, xLineY);
+            xLabelCtx.lineTo(tWidth, xLineY);
+            xLabelCtx.closePath();
+            xLabelCtx.stroke();
 
-                if (i === l - 1 || (viewport[1] - i) % 10 === 0) {
+            context.beginPath();
+
+            for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
+                renderItem({
+                    ctx: context,
+                    itemWidth,
+                    transform: v => -map(v, min, max, padding.top, tHeight - padding.bottom)
+                }, data[i]);
+
+                if (viewport[0] - l === -1 || i % s === 0) {
+                    let xLineLabelX = f(itemWidth * 0.5);
+
+                    xLabelCtx.strokeStyle = '#000';
+                    xLabelCtx.beginPath();
+                    xLabelCtx.moveTo(xLineLabelX, xLineY);
+                    xLabelCtx.lineTo(xLineLabelX, xLineY + 5);
+                    xLabelCtx.closePath();
+                    xLabelCtx.stroke();
+
+                    xLabelCtx.strokeStyle = 'rgba(0,0,0,0.1)';
+                    xLabelCtx.beginPath();
+                    xLabelCtx.moveTo(xLineLabelX, 0);
+                    xLabelCtx.lineTo(xLineLabelX, xLineY);
+                    xLabelCtx.closePath();
+                    xLabelCtx.stroke();
+
                     xLabelCtx.fillText(
                         applyDateFormatter(timeline[i], dateFormatter),
-                        f(x + itemWidth * 0.5),
-                        f(xLabelAlign === 'top' ? (xLabelHeight / 2) : height - (xLabelHeight / 2))
+                        f(xLineLabelX),
+                        f(xLineLabelY)
                     );
                 }
+                context.translate(itemWidth, 0);
+                xLabelCtx.translate(itemWidth, 0);
+            }
+            context.stroke();
+            context.closePath();
+
+            // Ylabel Settings
+            yLabelCtx.textBaseline = "middle";
+            yLabelCtx.textAlign = yLabelAlign === 'left' ? 'right' : 'left';
+            yLabelCtx.font = "12px 'Apple SD Gothic Neo',arial,sans-serif";
+
+            let yLineX = f(yLabelAlign === 'left' ? yLabelWidth : width - yLabelWidth);
+
+            yLabelCtx.beginPath();
+            yLabelCtx.moveTo(yLineX, 0);
+            yLabelCtx.lineTo(yLineX, -tHeight);
+            yLabelCtx.closePath();
+            yLabelCtx.stroke();
+
+            let split = 10;
+            let temp = (max - min) / split;
+            let tempIncrease = 10;
+            let tempSplit = 1;
+
+            while (tempSplit + tempIncrease < temp) {
+                tempSplit *= tempIncrease;
             }
 
+            let rd = f(min - (min % tempSplit));
+
+            for (let i = 0; i < split; i++) {
+                let d = rd + tempSplit * i;
+                if (d > max) break;
+                else if (d < min) continue;
+
+                let y = -map(d, min, max, 0, tHeight);
+
+                yLabelCtx.fillText(d.toString(), yLineX + 5, y);
+
+                yLabelCtx.strokeStyle = 'rgba(0,0,0,0.1)';
+                yLabelCtx.beginPath();
+                yLabelCtx.moveTo(grid.left, y);
+                yLabelCtx.lineTo(yLineX - 1, y);
+                yLabelCtx.closePath();
+                yLabelCtx.stroke();
+            }
+
+            yLabelCtx.restore();
             xLabelCtx.restore();
             context.restore();
         };
-        const renderXLabel = () => {
-        };
-        const renderYLabels = () => {
-            let ctx = yLabelCtx;
-            let canvas = ctx.canvas;
 
-            let { yLabelWidth, yLabelAlign } = style;
-            let x = yLabelAlign === 'left' ? 0 : canvas.width - yLabelWidth;
-
-            ctx.save();
-            ctx.fillRect(x, grid.top, yLabelWidth, canvas.height - grid.top - grid.bottom);
-            ctx.restore();
-        };
         const renderAll = () => {
-            renderYLabels();
-
             Object.keys(layers).map(key => render(layers[key]));
         };
 
-        /* 이벤트 리스너 등록 */
+        // 이벤트 리스너 등록
         // 줌 Zoom
         wrapper.addEventListener('mousewheel', e => {
             let velocity = (e.deltaY / 100) * -5;
@@ -290,6 +466,10 @@ class Chart {
             if (nextViewport[0] >= nextViewport[1]) nextViewport[0] = nextViewport[1] - 1;
 
             setViewport(nextViewport[0], nextViewport[1]);
+            focusIndex({
+                x: e.layerX,
+                y: e.layerY
+            });
         });
         // 드래그 Drag
         let mousedown = false;
@@ -307,13 +487,13 @@ class Chart {
         });
         window.addEventListener('mousemove', e => {
             let delta = prevMouseX - e.clientX;
-            // 이동값이 10px 이상일 경우, 좌 또는 우로 데이터 1개만큼 뷰포트 이동. (speed = 1)
+            // 이동값이 10px 이상일 경우, 좌 또는 우로 데이터 1개만큼 뷰포트 이동. (speed = 5)
             if (mousedown === true && prevMouseX !== null && Math.abs(delta) >= 10) {
                 e.preventDefault();
 
-                let direction = delta < 0 ? -1 : 1
-                    , velocity = direction * 1
-                    , nextViewport = [viewport[0] + velocity, viewport[1] + velocity];
+                let direction = delta < 0 ? -1 : 1,
+                    velocity = direction * 5,
+                    nextViewport = [viewport[0] + velocity, viewport[1] + velocity];
 
                 if (nextViewport[0] < 0 || nextViewport[1] > timeline.length) return;
 
@@ -321,6 +501,46 @@ class Chart {
                 prevMouseX = e.clientX;
             }
         });
+        // 탐색
+        wrapper.addEventListener('mousemove', e => {
+            focusIndex({
+                x: e.layerX,
+                y: e.layerY
+            });
+        });
+        wrapper.addEventListener('mouseout', e => {
+            floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
+        });
+
+        const focusIndex = ({
+            x,
+            y
+        }) => {
+            let {
+                tWidth,
+                tHeight,
+            } = getTransformSize();
+            let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
+            let index = Math.floor((x - grid.left) / itemWidth);
+
+            if (index < 0 || viewport[0] + index >= viewport[1]) {
+                floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
+                return;
+            }
+
+            floatCtx.save();
+
+            floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
+            floatCtx.translate(grid.left, 0);
+
+            floatCtx.fillStyle = "rgba(0, 175, 255, 0.1)";
+            floatCtx.strokeStyle = "rgba(0, 175, 255, 0.2)";
+
+            floatCtx.fillRect(index * itemWidth, grid.top, itemWidth, tHeight);
+            floatCtx.strokeRect(index * itemWidth, grid.top, itemWidth, tHeight);
+
+            floatCtx.restore();
+        };
 
         /* return(define) public logics */
         this.addLayer = addLayer;
@@ -328,7 +548,9 @@ class Chart {
         this.setViewport = setViewport;
         this.getViewport = getViewport;
         this.setTimeline = setTimeline;
-        this.render = name => render(layers[name]);
         this.setGrid = setGrid;
+        this.setPadding = setPadding;
+
+        this.render = () => renderAll();
     }
 }
