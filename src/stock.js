@@ -373,7 +373,7 @@ class Chart {
                     transform: v => -map(v, min, max, padding.top, tHeight - padding.bottom)
                 }, data[i]);
 
-                if (viewport[0] - l === -1 || i % s === 0) {
+                if (viewport[0] - l === -1 || (l - i) % s === 0) {
                     let xLineLabelX = f(itemWidth * 0.5);
 
                     xLabelCtx.strokeStyle = '#000';
