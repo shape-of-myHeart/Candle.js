@@ -33,13 +33,43 @@ const zf = (e, l) => {
         return s + e;
     }
 };
+const themes = {
+    gray: {
+        backgroundColor: '#f5f5f5',
+        textColor: '#5d5d5d',
+        axisColor: '#999',
+        splitAxisColor: 'rgba(0,0,0,0.05)',
+        candle: {
+            incrementItemColor: '#14b143',
+            decrementItemColor: '#ef232a'
+        },
+        line: {
+            itemColor: '#000000'
+        }
+    },
+    dark: {
+        backgroundColor: '#151515',
+        textColor: '#aaa',
+        axisColor: '#999',
+        splitAxisColor: 'rgba(255,255,255,0.1)',
+        candle: {
+            incrementItemColor: '#14b143',
+            decrementItemColor: '#ef232a'
+        },
+        line: {
+            itemColor: '#999'
+        }
+    }
+};
 class Chart {
-    constructor(domId) {
+    constructor(domId, themeName) {
         let wrapper = document.getElementById(domId);
         if (wrapper === null) {
             console.error(`Stock.js :: dom id(${domId})와 일치하는 객체를 찾지 못하였습니다.`);
             return;
         }
+
+        let theme;
 
         /* wrapper style settings */
         wrapper.style.position = 'relative';
@@ -72,7 +102,7 @@ class Chart {
             // - 항상최솟값을 같는 key 값을 반환하는 함수. (getMinForTypes 참조)
             // - 항상최대값을 같는 key 값을 반환하는 함수. (getMaxForTypes 참조)
             // - style의 일부 속성들
-            type: 'candle',
+            type: 'candle', // candle , line
             grid: {
                 top: 0,
                 right: 100,
@@ -97,7 +127,11 @@ class Chart {
                 // : top
                 // : bottom
                 xLabelAlign: "bottom",
-                xLabelHeight: 30
+                xLabelHeight: 30,
+
+                axisColor: '',
+                splitAxisColor: '',
+                textColor: ''
             },
             dateFormatter: "MM-dd HH:mm"
         };
@@ -112,6 +146,7 @@ class Chart {
             style,
             dateFormatter
         } = init;
+        let globalStyle = style;
         let min;
         let max;
 
@@ -131,7 +166,8 @@ class Chart {
             candle: ({
                 ctx,
                 itemWidth,
-                transform
+                transform,
+                style
             }, {
                 open,
                 close,
@@ -143,9 +179,8 @@ class Chart {
                     t = transform(high),
                     b = transform(low);
 
-                ctx.strokeStyle = close > open ? 'green' : 'red';
-                ctx.fillStyle = close > open ? 'green' : 'red';
-
+                ctx.strokeStyle = close > open ? style.incrementItemColor : style.decrementItemColor;
+                ctx.fillStyle = close > open ? style.incrementItemColor : style.decrementItemColor;
                 ctx.beginPath();
                 ctx.moveTo(f(itemWidth * 0.5), f(t));
                 ctx.lineTo(f(itemWidth * 0.5), f(y));
@@ -164,29 +199,41 @@ class Chart {
             line: ({
                 ctx,
                 itemWidth,
-                transform
+                transform,
+                style
             }, data) => {
                 if (data === null) return;
                 let y = transform(data);
+
+                ctx.fillStyle = style.itemColor;
+                ctx.strokeStyle = style.itemColor;
                 ctx.lineTo(f(itemWidth * 0.5), y);
             },
         };
+
         const getMinForTypes = {
             candle: item => item.low,
             line: item => item
         };
+
         const getMaxForTypes = {
             candle: item => item.high,
             line: item => item
         };
 
+        let styleForTypes;
+
         // 유틸 메소드
         const overwrite = (target, base) => {
+            if (typeof target !== 'object') target = {};
+
             let bKeys = Object.keys(base);
+
             for (let i = 0, l = bKeys.length; i < l; i++) {
                 let key = bKeys[i];
                 if (target[key] === undefined) target[key] = base[key];
             }
+
             return target;
         };
         const map = (n, a, b, c, d) => ((n - a) / (b - a)) * (d - c) + c;
@@ -195,7 +242,8 @@ class Chart {
         // 레이어 메소드
         const addLayer = (name, {
             type,
-            data
+            data,
+            style
         }) => { /* 라이브러리에 관련된 객체셋팅. */
             if (layers[name] !== undefined) {
                 console.error("Stock.js :: 이미 존재하는 레이어이름 입니다.");
@@ -206,17 +254,30 @@ class Chart {
             layer.type = type || init.layer.type;
             layer.data = data ? data : [];
 
+
+            layer.style = overwrite(style, styleForTypes[layer.type]);
+
             layers[name] = layer;
             updateMinMax();
         };
         const setLayer = (name, {
             type,
-            data
+            data,
+            style
         }) => {
             let layer = layer[name];
 
+            // type 변경시 type에 영향이 가는 레이어속성들을 새로설정.
+            let baseStyle = layer.style;
+
+            if (type !== layer.type) {
+                layer.style = undefined;
+                baseStyle = styleForTypes[type];
+            }
+
             layer.type = type || layer.type;
             layer.data = data ? data : [];
+            layer.style = overwirte(style, baseStyle);
 
             updateMinMax();
             render(layer);
@@ -275,14 +336,13 @@ class Chart {
                     let min = Infinity,
                         max = -Infinity;
                     for (let i = viewport[0], l = viewport[1]; i < l; i++) {
-                        if(data[i] === null) continue;
+                        if (data[i] === null) continue;
 
                         let _min = getMin(data[i]);
                         let _max = getMax(data[i]);
 
                         if (min > _min) min = _min;
                         if (max < _max) max = _max;
-
                     }
 
                     return {
@@ -305,10 +365,18 @@ class Chart {
         // 출력 메소드
         const render = layer => {
             let {
+                xLabelHeight,
+                xLabelAlign,
+                yLabelWidth,
+                yLabelAlign
+            } = globalStyle;
+
+            let {
                 data,
                 type,
                 context,
-                canvas
+                canvas,
+                style
             } = layer;
             let width = wrapper.clientWidth,
                 height = wrapper.clientHeight;
@@ -319,14 +387,6 @@ class Chart {
 
             // 레이어 타입에 따른 메소드를 가져온다.
             let renderItem = renderForTypes[type];
-
-            // 라벨 스타일
-            let {
-                xLabelHeight,
-                xLabelAlign,
-                yLabelWidth,
-                yLabelAlign
-            } = style;
 
             // Transform Size
             let {
@@ -357,7 +417,7 @@ class Chart {
             let xLineY = f(xLabelAlign === 'top' ? xLabelHeight : height - xLabelHeight);
             let xLineLabelY = xLabelAlign === 'top' ? (xLabelHeight / 2) : height - (xLabelHeight / 2);
 
-            xLabelCtx.strokeStyle = '#000';
+            xLabelCtx.strokeStyle = globalStyle.axisColor;
             xLabelCtx.beginPath();
             xLabelCtx.moveTo(0, xLineY);
             xLabelCtx.lineTo(tWidth, xLineY);
@@ -370,26 +430,28 @@ class Chart {
                 renderItem({
                     ctx: context,
                     itemWidth,
-                    transform: v => -map(v, min, max, padding.top, tHeight - padding.bottom)
+                    transform: v => -map(v, min, max, padding.top, tHeight - padding.bottom),
+                    style
                 }, data[i]);
 
                 if (viewport[0] - l === -1 || (l - i) % s === 0) {
                     let xLineLabelX = f(itemWidth * 0.5);
 
-                    xLabelCtx.strokeStyle = '#000';
+                    xLabelCtx.strokeStyle = globalStyle.axisColor;
                     xLabelCtx.beginPath();
                     xLabelCtx.moveTo(xLineLabelX, xLineY);
                     xLabelCtx.lineTo(xLineLabelX, xLineY + 5);
                     xLabelCtx.closePath();
                     xLabelCtx.stroke();
 
-                    xLabelCtx.strokeStyle = 'rgba(0,0,0,0.1)';
+                    xLabelCtx.strokeStyle = globalStyle.splitAxisColor;
                     xLabelCtx.beginPath();
                     xLabelCtx.moveTo(xLineLabelX, 0);
                     xLabelCtx.lineTo(xLineLabelX, xLineY);
                     xLabelCtx.closePath();
                     xLabelCtx.stroke();
 
+                    xLabelCtx.fillStyle = globalStyle.textColor;
                     xLabelCtx.fillText(
                         applyDateFormatter(timeline[i], dateFormatter),
                         f(xLineLabelX),
@@ -410,6 +472,9 @@ class Chart {
             let yLineX = f(yLabelAlign === 'left' ? yLabelWidth : width - yLabelWidth);
 
             yLabelCtx.beginPath();
+
+            yLabelCtx.strokeStyle = globalStyle.axisColor;
+
             yLabelCtx.moveTo(yLineX, 0);
             yLabelCtx.lineTo(yLineX, -tHeight);
             yLabelCtx.closePath();
@@ -426,6 +491,7 @@ class Chart {
 
             let rd = f(min - (min % tempSplit));
 
+            yLabelCtx.fillStyle = globalStyle.textColor;
             for (let i = 0; i < split; i++) {
                 let d = rd + tempSplit * i;
                 if (d > max) break;
@@ -435,7 +501,7 @@ class Chart {
 
                 yLabelCtx.fillText(d.toString(), yLineX + 5, y);
 
-                yLabelCtx.strokeStyle = 'rgba(0,0,0,0.1)';
+                yLabelCtx.strokeStyle = globalStyle.splitAxisColor;
                 yLabelCtx.beginPath();
                 yLabelCtx.moveTo(grid.left, y);
                 yLabelCtx.lineTo(yLineX - 1, y);
@@ -542,6 +608,29 @@ class Chart {
             floatCtx.restore();
         };
 
+        const setTheme = (themeName) => {
+            theme = themes[themeName];
+
+            wrapper.style.backgroundColor = theme.backgroundColor;
+
+            styleForTypes = {
+                candle: {
+                    incrementItemColor: theme.candle.incrementItemColor,
+                    decrementItemColor: theme.candle.decrementItemColor,
+                },
+                line: {
+                    itemColor: theme.line.itemColor
+                }
+            };
+
+            style.axisColor = theme.axisColor;
+            style.splitAxisColor = theme.splitAxisColor;
+            style.textColor = theme.textColor;
+
+            renderAll();
+        };
+        setTheme(themeName || "gray");
+        
         /* return(define) public logics */
         this.addLayer = addLayer;
         this.setLayer = setLayer;
@@ -550,7 +639,7 @@ class Chart {
         this.setTimeline = setTimeline;
         this.setGrid = setGrid;
         this.setPadding = setPadding;
-
         this.render = () => renderAll();
+        this.setTheme = setTheme;
     }
 }
