@@ -690,4 +690,4 @@ Chart.calculateMA = (dayCount, data) => {
         }
     }
     return result;
-};;
+};
