@@ -1,6 +1,6 @@
 const Chart = (() => {
     const applyDateFormatter = (d, f) => {
-        return f.replace(/(yyyy|yy|MM|dd|hh|mm|ss)/gi, function ($1) {
+        return f.replace(/(yyyy|yy|MM|dd|hh|mm|ss)/gi, function($1) {
             switch ($1) {
                 case "yyyy":
                     return d.getFullYear();
@@ -65,16 +65,16 @@ const Chart = (() => {
     // 레이어 타입에 따른 메소드 정의
     const renderForTypes = {
         candle: ({
-                ctx,
+            ctx,
             itemWidth,
             transform,
             style
-            }, {
-                open,
-                close,
-                high,
-                low
-            }) => {
+        }, {
+            open,
+            close,
+            high,
+            low
+        }) => {
             let y = transform(Math.max(open, close)),
                 h = transform(Math.min(open, close)) - y,
                 t = transform(high),
@@ -98,11 +98,11 @@ const Chart = (() => {
             ctx.strokeRect(f(itemWidth * 0.1), f(y), f(itemWidth * 0.8), f(h));
         },
         line: ({
-                ctx,
+            ctx,
             itemWidth,
             transform,
             style
-            }, data) => {
+        }, data) => {
             if (data === null) return;
             let y = transform(data);
 
@@ -210,11 +210,11 @@ const Chart = (() => {
             let viewport = []; /* 0 : start / 1 : end */
             let timeline = [];
             let {
-            grid,
+                grid,
                 padding,
                 style,
                 dateFormatter
-        } = init;
+            } = init;
             let globalStyle = style;
             let min;
             let max;
@@ -244,10 +244,10 @@ const Chart = (() => {
 
             // 레이어 메소드
             const addLayer = (name, {
-            type,
+                type,
                 data,
                 style
-        }) => { /* 라이브러리에 관련된 객체셋팅. */
+            }) => { /* 라이브러리에 관련된 객체셋팅. */
                 if (layers[name] !== undefined) {
                     console.error("Stock.js :: 이미 존재하는 레이어이름 입니다.");
                     return;
@@ -262,10 +262,10 @@ const Chart = (() => {
                 updateMinMax();
             };
             const setLayer = (name, {
-            type,
+                type,
                 data,
                 style
-        }) => {
+            }) => {
                 let layer = layer[name];
 
                 // type 변경시 type에 영향이 가는 레이어속성들을 새로설정.
@@ -284,7 +284,8 @@ const Chart = (() => {
                 render(layer);
             };
             const layerMap = (func, formatter) => {
-                let lKeys = Object.keys(layers), result = [];
+                let lKeys = Object.keys(layers),
+                    result = [];
 
                 for (let i = 0; i < lKeys.length; i++) {
                     let key = lKeys[i];
@@ -336,9 +337,9 @@ const Chart = (() => {
             const updateMinMax = () => {
                 let arr = layerMap(layer => {
                     let {
-                    data,
+                        data,
                         type
-                } = layer;
+                    } = layer;
                     let getMin = getMinForTypes[type];
                     let getMax = getMaxForTypes[type];
 
@@ -376,19 +377,19 @@ const Chart = (() => {
             // 출력 메소드
             const render = layer => {
                 let {
-                xLabelHeight,
+                    xLabelHeight,
                     xLabelAlign,
                     yLabelWidth,
                     yLabelAlign
-            } = globalStyle;
+                } = globalStyle;
 
                 let {
-                data,
+                    data,
                     type,
                     context,
                     canvas,
                     style
-            } = layer;
+                } = layer;
 
                 let width = wrapper.clientWidth,
                     height = wrapper.clientHeight;
@@ -402,9 +403,9 @@ const Chart = (() => {
 
                 // Transform Size
                 let {
-                tWidth,
+                    tWidth,
                     tHeight,
-            } = getTransformSize();
+                } = getTransformSize();
                 let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
 
                 context.save();
@@ -589,13 +590,13 @@ const Chart = (() => {
             });
 
             const focusIndex = ({
-            x,
+                x,
                 y
-        }) => {
+            }) => {
                 let {
-                tWidth,
+                    tWidth,
                     tHeight,
-            } = getTransformSize();
+                } = getTransformSize();
 
                 let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
                 let index = Math.floor((x - grid.left) / itemWidth);
@@ -670,7 +671,7 @@ const Chart = (() => {
             this.render = () => renderAll();
             this.setTheme = setTheme;
             this.resize = resize;
-            this.onSelect = () => { };
+            this.onSelect = () => {};
         }
     }
 })();
