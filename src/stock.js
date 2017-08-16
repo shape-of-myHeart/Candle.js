@@ -674,7 +674,6 @@ const Chart = (() => {
         }
     }
 })();
-
 Chart.calculateMA = (dayCount, data) => {
     let result = [],
         arr = [],
