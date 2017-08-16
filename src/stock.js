@@ -1,5 +1,4 @@
-const Chart = (
-    () => {
+const Chart = (() => {
         const applyDateFormatter = (d, f) => {
             return f.replace(/(yyyy|yy|MM|dd|hh|mm|ss)/gi, function($1) {
                 switch ($1) {
@@ -645,37 +644,36 @@ const Chart = (
 
                     style.axisColor = theme.axisColor;
                     style.splitAxisColor = theme.splitAxisColor;
-                    style.textColor = theme.textColor;
+                style.textColor = theme.textColor;
 
-                    renderAll();
-                };
-                setTheme("gray");
+                renderAll();
+            };
+            setTheme("gray");
 
-                const resize = () => {
-                    // 모든 canvas 의 크기를 wrapper에 맞춤.
-                    canvasStack.map(canvas => {
-                        canvas.width = wrapper.clientWidth;
-                        canvas.height = wrapper.clientHeight;
-                    });
-                    renderAll();
-                };
+            const resize = () => {
+                // 모든 canvas 의 크기를 wrapper에 맞춤.
+                canvasStack.map(canvas => {
+                    canvas.width = wrapper.clientWidth;
+                    canvas.height = wrapper.clientHeight;
+                });
+                renderAll();
+            };
 
-                /* return(define) public logics */
-                this.addLayer = addLayer;
-                this.setLayer = setLayer;
-                this.setViewport = setViewport;
-                this.getViewport = getViewport;
-                this.setTimeline = setTimeline;
-                this.setGrid = setGrid;
-                this.setPadding = setPadding;
-                this.render = () => renderAll();
-                this.setTheme = setTheme;
-                this.resize = resize;
-                this.onSelect = () => {};
-            }
+            /* return(define) public logics */
+            this.addLayer = addLayer;
+            this.setLayer = setLayer;
+            this.setViewport = setViewport;
+            this.getViewport = getViewport;
+            this.setTimeline = setTimeline;
+            this.setGrid = setGrid;
+            this.setPadding = setPadding;
+            this.render = () => renderAll();
+            this.setTheme = setTheme;
+            this.resize = resize;
+            this.onSelect = () => {};
         }
     }
-)();
+})();
 
 Chart.calculateMA = (dayCount, data) => {
     let result = [],
