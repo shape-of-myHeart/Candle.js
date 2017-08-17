@@ -8,7 +8,7 @@ const Chart = (() => {
             candle: {
                 incrementItemColor: '#14b143',
                 decrementItemColor: '#ef232a',
-                minBodyWidth: -Infinity
+                minBodyWidth: 7
             },
             line: {
                 itemColor: '#000000'
@@ -22,7 +22,7 @@ const Chart = (() => {
             candle: {
                 incrementItemColor: '#14b143',
                 decrementItemColor: '#ef232a',
-                minBodyWidth: -Infinity
+                minBodyWidth: 7
             },
             line: {
                 itemColor: '#999'
@@ -159,8 +159,8 @@ const Chart = (() => {
         }
         constructor(domId) {
             let wrapper = document.getElementById(domId);
+
             if (wrapper === null) {
-                console.error(`Stock.js :: dom id(${domId})와 일치하는 객체를 찾지 못하였습니다.`);
                 return;
             }
 
@@ -272,7 +272,6 @@ const Chart = (() => {
                 style
             }) => { /* 라이브러리에 관련된 객체셋팅. */
                 if (layers[name] !== undefined) {
-                    console.error("Stock.js :: 이미 존재하는 레이어이름 입니다.");
                     return;
                 }
                 let layer = makeCanvas();
@@ -334,7 +333,8 @@ const Chart = (() => {
                     timeline.push(new Date(pTimeline[i]));
                 }
             };
-
+            const setDateFormatter = f => dateFormatter = f;
+            
             // 그리드 메소드
             const setGrid = pGrid => {
                 grid = overwrite(pGrid, grid);
