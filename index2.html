@@ -40,11 +40,10 @@
                 close: item.ClosePrice,
                 high: item.HighPrice,
                 low: item.LowPrice
-            })),
-            style: {
-                minBodyWidth: 7
-            }
+            }))
         });
+
+        let toFixed = n => n && Number(n.toFixed(2));
 
         chart.addLayer('ma10', {
             type: 'line',
@@ -64,8 +63,26 @@
 
         chart.render();
 
-        chart.onSelect = (datas, tooltip) => {
-            tooltip('candle');
+        chart.onSelect = (time, datas, tooltip) => {
+            // 레이어 정보 미표시 가능
+            // delete datas.ma10;
+            // delete datas.ma30;
+            tooltip
+                (datas)
+                (
+                    'candle', {
+                        // candle: {
+                        //     open: 'Open',
+                        //     close: 'Close',
+                        //     low: 'Low',
+                        //     high: 'High'
+                        // },
+                        ma10: 'Ma10',
+                        ma30: 'Ma30'
+                    }, {
+                        ma10: v => v && Math.floor(v),
+                        ma30: v => v && Math.floor(v)
+                    });
         };
     </script>
 </body>

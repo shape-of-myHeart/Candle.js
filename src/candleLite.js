@@ -90,8 +90,8 @@ const Chart = (() => {
         },
     };
     const tooltipForTypes = {
-        candle: (title, data) => `<div>Open: ${data.open}</div><div>Close: ${data.close}</div><div>Low: ${data.low}</div><div>High: ${data.high}</div><br/>`,
-        line: (title, data, color) => `<div style='color:${color}'>${title}: ${data}</div>`
+        candle: (title, data, formatter) => data === null ? "" : `<div>${title.open || 'Open'}: ${formatter(data.open)}</div><div>${title.close || 'Close'}: ${formatter(data.close)}</div><div>${title.low || 'Low'}: ${formatter(data.low)}</div><div>${title.high || 'High'}: ${formatter(data.high)}</div><br/>`,
+        line: (title, data, formatter, color) => data === null ? "" : `<div style='color:${color}'>${title}: ${formatter(data)}</div>`
     };
     const getMinForTypes = {
         candle: item => item.low,
@@ -647,22 +647,29 @@ const Chart = (() => {
                     (layer, name) => layer.data[index] === 'object' ? overwrite(null, layer.data[index]) : layer.data[index],
                     key => key
                 );
-                this.onSelect(datas, showTooltip(datas));
+                let time = new Date(timeline[index]);
+                this.onSelect(time, datas, showTooltip(time));
             };
             const showTooltip =
-                datas => (name, titles) => {
+                time => datas => (name, titles, formatters) => {
                     if (titles === undefined) titles = {};
-                    let mainLayer = layers[name];
 
-                    let keys = Object.keys(datas);
-                    let html = "";
+                    let mainLayer = layers[name],
+                        keys = Object.keys(datas),
+                        html = "";
 
                     for (let i = 0, l = keys.length; i < l; i++) {
-                        let key = keys[i];
-                        let layer = layers[key];
-                        html += tooltipForTypes[layer.type](titles[key] || key, datas[key], layer.style.itemColor || "");
-                    }
+                        let key = keys[i],
+                            layer = layers[key];
 
+                        html += tooltipForTypes[layer.type](
+                            titles[key] || key, // 타이틀
+                            datas[key], // 데이터
+                            formatters[key] || (v => v), // 데이터 포매터
+                            layer.style.itemColor || "" // 글자색상 (예외. 캔들차트)
+                        );
+                    }
+                    // tooltip.innerHTML = `<div>${applyDateFormatter(time, 'yyyy-MM-dd hh:mm:ss')}</div>`;
                     tooltip.innerHTML = `<div class='candle-lite-tooltip-colorpick' style='background-color:${datas[name].close > datas[name].open ? mainLayer.style.incrementItemColor : mainLayer.style.decrementItemColor}'></div>${html}`;
                 };
 
