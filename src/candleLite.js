@@ -334,7 +334,7 @@ const Chart = (() => {
                 }
             };
             const setDateFormatter = f => dateFormatter = f;
-            
+
             // 그리드 메소드
             const setGrid = pGrid => {
                 grid = overwrite(pGrid, grid);
@@ -707,6 +707,7 @@ const Chart = (() => {
             this.setTheme = setTheme;
             this.resize = resize;
             this.onSelect = () => {};
+            this.setDateFormatter = dateFormatter;
         }
     }
 
