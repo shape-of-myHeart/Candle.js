@@ -6,7 +6,7 @@ Chart.addTheme("blue", {
     candle: {
         incrementItemColor: '#FA5858',
         decrementItemColor: '#01DF3A',
-        minBodyWidth: -Infinity
+        minBodyWidth: 7
     },
     line: {
         itemColor: '#999'

@@ -2,28 +2,28 @@
     position: absolute;
     top: 5px;
     left: 5px;
-
-    width: 600px;
-    height: 35px;
-
-    padding-left: 10px;
+    padding: 5px 5px 5px 10px;
+    line-height:125%;
+    background-color: rgba(0, 0, 0, 0.5);
 
     color: #fff;
-    font-size: 13px;
-
+    font-size: 12px;
+    font-family: 'Apple SD Gothic Neo' monospace, arial monospace;
+    
     z-index: 10000;
     
     box-sizing: border-box;
     -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
-
+    
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
-
+    
     pointer-events: none;
     -webkit-pointer-events: none;
     -moz-pointer-events: none;
+    
 }
 
 .candle-lite-tooltip>* {
@@ -35,7 +35,6 @@
     position: absolute;
     top: 0;
     left: 0;
-   
     width: 5px;
     height: 100%;
 }
