@@ -218,7 +218,7 @@ const Chart = (() => {
                     bottom: 50,
                     left: 0
                 },
-                style: {
+                globalStyle: {
                     // yLabelAlign
                     // : right
                     // : left
@@ -245,10 +245,9 @@ const Chart = (() => {
             let {
                 grid,
                 padding,
-                style,
+                globalStyle,
                 dateFormatter
             } = init;
-            let globalStyle = style;
             let min;
             let max;
 
@@ -685,9 +684,9 @@ const Chart = (() => {
                 // 모든 레이어에 기본 스타일 적용.
                 layerMap(layer => layer.style = overwrite(styleForTypes[layer.type], layer.style));
 
-                style.axisColor = theme.axisColor;
-                style.splitAxisColor = theme.splitAxisColor;
-                style.textColor = theme.textColor;
+                globalStyle.axisColor = theme.axisColor;
+                globalStyle.splitAxisColor = theme.splitAxisColor;
+                globalStyle.textColor = theme.textColor;
 
                 renderAll();
             };
