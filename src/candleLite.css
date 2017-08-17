@@ -1,0 +1,41 @@
+.candle-lite-tooltip {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+
+    width: 600px;
+    height: 35px;
+
+    padding-left: 10px;
+
+    color: #fff;
+    font-size: 13px;
+
+    z-index: 10000;
+    
+    box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+
+    pointer-events: none;
+    -webkit-pointer-events: none;
+    -moz-pointer-events: none;
+}
+
+.candle-lite-tooltip>* {
+    float: left;
+    margin-right: 5px;
+}
+
+.candle-lite-tooltip>.candle-lite-tooltip-colorpick {
+    position: absolute;
+    top: 0;
+    left: 0;
+   
+    width: 5px;
+    height: 100%;
+}

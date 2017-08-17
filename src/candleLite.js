@@ -89,6 +89,19 @@ const Chart = (() => {
             ctx.lineTo(f(itemWidth * 0.5), y);
         },
     };
+    const tooltipForTypes = {
+        candle: (title, data) => `<div>Open: ${data.open}</div><div>Close: ${data.close}</div><div>Low: ${data.low}</div><div>High: ${data.high}</div><br/>`,
+        line: (title, data, color) => `<div style='color:${color}'>${title}: ${data}</div>`
+    };
+    const getMinForTypes = {
+        candle: item => item.low,
+        line: item => item
+    };
+    const getMaxForTypes = {
+        candle: item => item.high,
+        line: item => item
+    };
+
     // 유틸 메소드
     const map = (n, a, b, c, d) => ((n - a) / (b - a)) * (d - c) + c;
     const f = Math.floor;
@@ -156,8 +169,13 @@ const Chart = (() => {
             /* wrapper style settings */
             wrapper.style.position = 'relative';
 
-            let canvasStack = [];
+            // 툴팁 DOM wrapper 뒤에 추가
+            const tooltip = document.createElement('div');
+            tooltip.classList.add('candle-lite-tooltip');
 
+            wrapper.appendChild(tooltip);
+
+            let canvasStack = [];
             // 캔버스 생성, wrapper 에 append 후 object로 dom 객체와 context 반환.
             const makeCanvas = () => {
                 let canvas = document.createElement('canvas');
@@ -244,16 +262,6 @@ const Chart = (() => {
 
             // Float 캔버스 Context 정의
             const floatCtx = makeCanvas().context;
-
-            const getMinForTypes = {
-                candle: item => item.low,
-                line: item => item
-            };
-
-            const getMaxForTypes = {
-                candle: item => item.high,
-                line: item => item
-            };
 
             let styleForTypes;
 
@@ -615,9 +623,10 @@ const Chart = (() => {
                 } = getTransformSize();
 
                 let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
-                let index = Math.floor((x - grid.left) / itemWidth);
+                let screenIndex = Math.floor(x / itemWidth);
+                let index = viewport[0] + screenIndex;
 
-                if (index < 0 || viewport[0] + index >= viewport[1]) {
+                if (index < 0 || index >= viewport[1]) {
                     floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
                     return;
                 }
@@ -625,22 +634,37 @@ const Chart = (() => {
                 floatCtx.save();
 
                 floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
-                floatCtx.translate(grid.left, 0);
 
                 floatCtx.fillStyle = "rgba(0, 175, 255, 0.1)";
                 floatCtx.strokeStyle = "rgba(0, 175, 255, 0.2)";
 
-                floatCtx.fillRect(index * itemWidth, grid.top, itemWidth, tHeight);
-                floatCtx.strokeRect(index * itemWidth, grid.top, itemWidth, tHeight);
+                floatCtx.fillRect(screenIndex * itemWidth, grid.top, itemWidth, tHeight);
+                floatCtx.strokeRect(screenIndex * itemWidth, grid.top, itemWidth, tHeight);
 
                 floatCtx.restore();
-                this.onSelect(
-                    layerMap(
-                        (layer, name) => layer.data[index] === 'object' ? overwrite(null, layer.data[index]) : layer.data[index],
-                        key => key
-                    )
+
+                let datas = layerMap(
+                    (layer, name) => layer.data[index] === 'object' ? overwrite(null, layer.data[index]) : layer.data[index],
+                    key => key
                 );
+                this.onSelect(datas, showTooltip(datas));
             };
+            const showTooltip =
+                datas => (name, titles) => {
+                    if (titles === undefined) titles = {};
+                    let mainLayer = layers[name];
+
+                    let keys = Object.keys(datas);
+                    let html = "";
+
+                    for (let i = 0, l = keys.length; i < l; i++) {
+                        let key = keys[i];
+                        let layer = layers[key];
+                        html += tooltipForTypes[layer.type](titles[key] || key, datas[key], layer.style.itemColor || "");
+                    }
+
+                    tooltip.innerHTML = `<div class='candle-lite-tooltip-colorpick' style='background-color:${datas[name].close > datas[name].open ? mainLayer.style.incrementItemColor : mainLayer.style.decrementItemColor}'></div>${html}`;
+                };
 
             const setTheme = themeName => {
                 theme = themes[themeName];

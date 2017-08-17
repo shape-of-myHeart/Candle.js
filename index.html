@@ -28,7 +28,7 @@
     <script src="./data.js"></script>
     <script>
         const chart = new Chart('stock-board');
-        
+
         chart.setTheme('dark');
         chart.setTimeline(data.map(item => item.CreateTime));
 
@@ -68,7 +68,7 @@
             let po = themes.pop();
             chart.setTheme(po);
             themes.unshift(po);
-            chart.setLayer('candle', { style: { minBodyWidth: 7 } });
+            chart.setLayer('candle', { style: { minBodyWidth: 7 }});
             chart.setLayer('ma10', { style: { itemColor: "orange" } });
             chart.setLayer('ma30', { style: { itemColor: "skyblue" } });
         }, 500);

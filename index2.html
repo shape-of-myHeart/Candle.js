@@ -5,6 +5,7 @@
     <title>Stock.js</title>
     <meta charset="utf-8">
 
+    <link rel="stylesheet" href="./src/candleLite.css">
     <script src="./src/candleLite.js"></script>
     <script src="./src/themes/candleLite-theme-skyblue.js"></script>
 
@@ -62,6 +63,10 @@
         });
 
         chart.render();
+
+        chart.onSelect = (datas, tooltip) => {
+            tooltip('candle');
+        };
     </script>
 </body>
 
