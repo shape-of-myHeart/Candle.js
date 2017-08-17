@@ -4,7 +4,7 @@
     left: 5px;
     padding: 5px 5px 5px 15px;
     line-height:125%;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.6);
 
     color: #fff;
     font-size: 12px;
@@ -23,7 +23,6 @@
     pointer-events: none;
     -webkit-pointer-events: none;
     -moz-pointer-events: none;
-    
 }
 
 .candle-lite-tooltip>* {
