@@ -30,7 +30,6 @@
     <script>
         const chart = new Chart('stock-board');
 
-        chart.setTheme('blue');
         chart.setTimeline(data.map(item => item.CreateTime));
 
         chart.addLayer('candle', {
@@ -67,10 +66,9 @@
             // 레이어 정보 미표시 가능
             // delete datas.ma10;
             // delete datas.ma30;
-            tooltip
-                (datas)
-                (
-                    'candle', {
+            tooltip(
+                'candle', {
+                    titles: {
                         // candle: {
                         //     open: 'Open',
                         //     close: 'Close',
@@ -79,10 +77,14 @@
                         // },
                         ma10: 'Ma10',
                         ma30: 'Ma30'
-                    }, {
+                    },
+                    filters: ['candle'],
+                    formatters: {
                         ma10: v => v && Math.floor(v),
                         ma30: v => v && Math.floor(v)
-                    });
+                    },
+                }
+            );
         };
     </script>
 </body>

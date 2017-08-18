@@ -8,7 +8,7 @@ const Chart = (() => {
             candle: {
                 incrementItemColor: '#14b143',
                 decrementItemColor: '#ef232a',
-                minBodyWidth: 7
+                minBodyWidth: 6
             },
             line: {
                 itemColor: '#000000'
@@ -22,7 +22,7 @@ const Chart = (() => {
             candle: {
                 incrementItemColor: '#14b143',
                 decrementItemColor: '#ef232a',
-                minBodyWidth: 7
+                minBodyWidth: 6
             },
             line: {
                 itemColor: '#999'
@@ -39,9 +39,9 @@ const Chart = (() => {
             style
         }, {
             open,
-                close,
-                high,
-                low
+            close,
+            high,
+            low
         }) => {
             let y = transform(Math.max(open, close)),
                 h = transform(Math.min(open, close)) - y,
@@ -90,8 +90,16 @@ const Chart = (() => {
         },
     };
     const tooltipForTypes = {
-        candle: ({ title, data, formatter }) => data === null ? "" : `<div>${title.open || 'Open'}: ${formatter(data.open)}</div><div>${title.close || 'Close'}: ${formatter(data.close)}</div><div>${title.low || 'Low'}: ${formatter(data.low)}</div><div>${title.high || 'High'}: ${formatter(data.high)}</div><br/>`,
-        line: ({ title, data, formatter, color }) => data === null ? "" : `<div style='color:${color}'>${title}: ${formatter(data)}</div>`
+        candle: ({
+            title,
+            data,
+            formatter
+        }) => data === null ? null : `${title.open || 'Open'}: ${formatter(data.open)} ${title.close || 'Close'}: ${formatter(data.close)} ${title.low || 'Low'}: ${formatter(data.low)} ${title.high || 'High'}: ${formatter(data.high)}`,
+        line: ({
+            title,
+            data,
+            formatter,
+        }) => data === null ? null : `${title}: ${formatter(data)}`
     };
     const getMinForTypes = {
         candle: item => item.low,
@@ -169,21 +177,17 @@ const Chart = (() => {
             /* wrapper style settings */
             wrapper.style.position = 'relative';
 
-            // 툴팁 DOM wrapper 뒤에 추가
-            const tooltip = document.createElement('div');
-            tooltip.classList.add('candle-lite-tooltip');
-
-            wrapper.appendChild(tooltip);
-
             let canvasStack = [];
             // 캔버스 생성, wrapper 에 append 후 object로 dom 객체와 context 반환.
-            const makeCanvas = () => {
+            const makeCanvas = (zIndex = 0) => {
                 let canvas = document.createElement('canvas');
                 let context = canvas.getContext('2d');
 
                 canvas.style.position = 'absolute';
                 canvas.style.top = 0;
                 canvas.style.left = 0;
+
+                canvas.style.zIndex = zIndex;
 
                 canvas.width = wrapper.clientWidth;
                 canvas.height = wrapper.clientHeight;
@@ -260,6 +264,7 @@ const Chart = (() => {
             const xLabelCtx = makeCanvas().context;
             // Float 캔버스 Context 정의
             const floatCtx = makeCanvas().context;
+            const tooltipCtx = makeCanvas(10000).context;
 
             let styleForTypes;
 
@@ -280,6 +285,7 @@ const Chart = (() => {
 
                 layers[name] = layer;
                 updateMinMax();
+                reloadTooltip();
             };
             const setLayer = (name, {
                 type,
@@ -290,7 +296,6 @@ const Chart = (() => {
 
                 // type 변경시 type에 영향이 가는 레이어속성들을 새로설정.
                 let baseStyle = layer.style;
-
                 if (type !== undefined && type !== layer.type) {
                     layer.style = {};
                     baseStyle = styleForTypes[type];
@@ -302,6 +307,7 @@ const Chart = (() => {
                 updateMinMax();
 
                 render(layer);
+                reloadTooltip();
             };
             const layerMap = (func, formatter) => {
                 let lKeys = Object.keys(layers),
@@ -330,8 +336,12 @@ const Chart = (() => {
                 for (let i = 0, l = pTimeline.length; i < l; i++) {
                     timeline.push(new Date(pTimeline[i]));
                 }
+                reloadTooltip();
             };
-            const setDateFormatter = f => { dateFormatter = f; renderAll(); }
+            const setDateFormatter = f => {
+                dateFormatter = f;
+                renderAll();
+            }
 
             // 그리드 메소드
             const setGrid = pGrid => {
@@ -610,7 +620,7 @@ const Chart = (() => {
             wrapper.addEventListener('mouseout', e => {
                 floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
             });
-
+            let previousFocusedIndex;
             const focusIndex = ({
                 x,
                 y
@@ -624,6 +634,9 @@ const Chart = (() => {
                 let screenIndex = Math.floor(x / itemWidth);
                 let index = viewport[0] + screenIndex;
 
+                if (previousFocusedIndex === index) {
+                    return;
+                }
                 if (index < 0 || index >= viewport[1]) {
                     floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
                     return;
@@ -644,34 +657,126 @@ const Chart = (() => {
                 let datas =
                     layerMap(
                         (layer, name) => layer.data[index] === 'object' ? overwrite(null, layer.data[index]) : layer.data[index],
-                        key => key
+                        name => name
                     );
                 let time = new Date(timeline[index]);
 
-                this.onSelect(time, datas, showTooltip(time));
+                this.onSelect(time, datas, showTooltip(index));
             };
-            const showTooltip = time => datas => (mainLayerName, titles, formatters) => {
-                if (titles === undefined) titles = {};
 
-                let mainLayer = layers[mainLayerName],
-                    mainData = datas[mainLayerName],
-                    keys = Object.keys(datas),
-                    html = "";
+            // reloadTooltip
+            // - addLayer
+            // - seyLayer
+            // - setTimeline
 
-                for (let i = 0, l = keys.length; i < l; i++) {
-                    let key = keys[i], layer = layers[key];
+            let reloadTooltip = () => {};
 
-                    html += tooltipForTypes[layer.type]
-                        ({
-                            formatter: formatters[key] || (v => v),
-                            color: layer.style.itemColor || "",
-                            title: titles[key] || key,
-                            data: datas[key],
+            const showTooltip =
+                (() => {
+                    const render = ({
+                        texts,
+                        maxWidth,
+                        lineHeight,
+                        notRender = false
+                    }) => {
+                        let lineCount = 1;
+                        let lineWidth = 0;
+
+                        for (let i = 0; i < texts.length; i++) {
+
+                            let text = texts[i];
+
+                            if (maxWidth < lineWidth + text.width) {
+
+                                if (notRender !== true) {
+                                    tooltipCtx.translate(0, lineHeight);
+                                }
+                                lineWidth = 0;
+                                lineCount++;
+
+                            }
+                            if (notRender !== true) {
+
+                                tooltipCtx.fillStyle = text.color;
+                                tooltipCtx.fillText(text.text, lineWidth, 0);
+
+                            }
+                            lineWidth += text.width + 10;
+                        }
+
+                        return lineCount;
+                    };
+
+                    return index => (mainLayerName, {
+                        titles = {},
+                        formatters = {},
+                        filters = []
+                    }) => {
+
+                        let mainLayer = layers[mainLayerName],
+                            mainData = mainLayer.data[index],
+                            texts = [],
+                            fontSize = 13,
+                            lineHeight = fontSize * 1.2,
+                            maxWidth = -Infinity
+                            // maxWidth = 300 (px)
+                            ;
+
+                        tooltipCtx.save();
+                        tooltipCtx.clearRect(-10, -10, wrapper.clientWidth + 20, wrapper.clientHeight + 20);
+
+                        tooltipCtx.font = `${fontSize}px 'Apple SD Gothic Neo',arial,sans-serif`;
+                        tooltipCtx.textBaseline = "middle";
+
+                        layerMap((layer, name) => {
+                            if (filters.indexOf(name) !== -1) {
+                                return;
+                            }
+                            let text = tooltipForTypes[layer.type]
+                                ({
+                                    title: titles[name] || name,
+                                    data: layer.data[index],
+                                    formatter: formatters[name] || (v => v),
+                                });
+
+                            if (text === null) return;
+
+                            let width = tooltipCtx.measureText(text).width;
+
+                            texts.push({
+                                text,
+                                width,
+                                color: layer.style.itemColor || '#ffffff'
+                            });
+
+                            if (width > maxWidth) maxWidth = width;
                         });
-                }
-                // tooltip.innerHTML = `<div>${applyDateFormatter(time, 'yyyy-MM-dd hh:mm:ss')}</div>`;
-                tooltip.innerHTML = `<div class='candle-lite-tooltip-colorpick' style='background-color:${mainData.close > mainData.open ? mainLayer.style.incrementItemColor : mainLayer.style.decrementItemColor}'></div>${html}`;
-            };
+
+                        let rTooltip =
+                            b => render({
+                                texts,
+                                maxWidth,
+                                lineHeight,
+                                notRender: b
+                            });
+
+                        tooltipCtx.fillStyle = 'rgba(0,0,0,0.6)';
+                        tooltipCtx.fillRect(5, 5, maxWidth + 10, rTooltip(true) * lineHeight + 5);
+
+                        tooltipCtx.translate(10, 15);
+
+                        rTooltip();
+
+                        tooltipCtx.restore();
+
+                        reloadTooltip = () => showTooltip(index)
+                            (mainLayerName, {
+                                titles,
+                                formatters,
+                                filters
+                            });
+                    };
+                })();
 
             const setTheme = themeName => {
                 theme = themes[themeName];
@@ -683,7 +788,9 @@ const Chart = (() => {
                 styleForTypes.line = overwrite(null, theme.line);
 
                 // 모든 레이어에 기본 스타일 적용.
-                layerMap(layer => layer.style = overwrite(styleForTypes[layer.type], layer.style));
+                layerMap((layer, name) => setLayer(name, {
+                    style: styleForTypes[layer.type]
+                }));
 
                 globalStyle.axisColor = theme.axisColor;
                 globalStyle.splitAxisColor = theme.splitAxisColor;
@@ -713,7 +820,7 @@ const Chart = (() => {
             this.render = () => renderAll();
             this.setTheme = setTheme;
             this.resize = resize;
-            this.onSelect = () => { };
+            this.onSelect = () => {};
             this.setDateFormatter = setDateFormatter;
         }
     }
