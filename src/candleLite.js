@@ -1,4 +1,44 @@
 const Chart = (() => {
+    /* initialize */
+    const init = {
+        // type 에 의존하는 속성값들
+        // - renderItem (renderForTypes 변수 참조.)
+        // - 항상최솟값을 같는 key 값을 반환하는 함수. (getMinForTypes 참조)
+        // - 항상최대값을 같는 key 값을 반환하는 함수. (getMaxForTypes 참조)
+        // - style의 일부 속성들
+        type: 'candle', // candle , line
+        grid: {
+            top: 0,
+            right: 100,
+            bottom: 30,
+            left: 0
+        },
+        padding: {
+            top: 50,
+            right: 0,
+            bottom: 50,
+            left: 0
+        },
+        globalStyle: {
+            // yLabelAlign
+            // : right
+            // : left
+            yLabelAlign: "right",
+            yLabelWidth: 100,
+
+            // xLabelAlign
+            // : top
+            // : bottom
+            xLabelAlign: "bottom",
+            xLabelHeight: 30,
+
+            axisColor: '',
+            splitAxisColor: '',
+            textColor: ''
+        },
+        dateFormatter: "MM-dd HH:mm"
+    };
+    
     const themes = {
         gray: {
             backgroundColor: '#f5f5f5',
@@ -200,46 +240,6 @@ const Chart = (() => {
                     canvas,
                     context
                 };
-            };
-
-            /* initialize */
-            const init = {
-                // type 에 의존하는 속성값들
-                // - renderItem (renderForTypes 변수 참조.)
-                // - 항상최솟값을 같는 key 값을 반환하는 함수. (getMinForTypes 참조)
-                // - 항상최대값을 같는 key 값을 반환하는 함수. (getMaxForTypes 참조)
-                // - style의 일부 속성들
-                type: 'candle', // candle , line
-                grid: {
-                    top: 0,
-                    right: 100,
-                    bottom: 30,
-                    left: 0
-                },
-                padding: {
-                    top: 50,
-                    right: 0,
-                    bottom: 50,
-                    left: 0
-                },
-                globalStyle: {
-                    // yLabelAlign
-                    // : right
-                    // : left
-                    yLabelAlign: "right",
-                    yLabelWidth: 100,
-
-                    // xLabelAlign
-                    // : top
-                    // : bottom
-                    xLabelAlign: "bottom",
-                    xLabelHeight: 30,
-
-                    axisColor: '',
-                    splitAxisColor: '',
-                    textColor: ''
-                },
-                dateFormatter: "MM-dd HH:mm"
             };
 
             /* Variable 정의 */
