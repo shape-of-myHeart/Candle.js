@@ -779,7 +779,7 @@ const Chart = (() => {
                     };
                 })();
 
-            const updateInitLayerStyleByTheme = () => {
+            const updateInitLayerStyle = () => {
                 initLayerStyle.candle = overwrite(theme.layerStyle.candle, init.layerStyle.candle);
                 initLayerStyle.line = overwrite(theme.layerStyle.line, init.layerStyle.line);
             };
