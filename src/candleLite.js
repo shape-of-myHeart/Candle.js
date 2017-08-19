@@ -1,12 +1,12 @@
 const Chart = (() => {
-    /* initialize */
     const init = {
+        backgroundColor: '#f5f5f5',
         // type 에 의존하는 속성값들
         // - renderItem (renderForTypes 변수 참조.)
         // - 항상최솟값을 같는 key 값을 반환하는 함수. (getMinForTypes 참조)
         // - 항상최대값을 같는 key 값을 반환하는 함수. (getMaxForTypes 참조)
         // - style의 일부 속성들
-        type: 'candle', // candle , line
+
         grid: {
             top: 0,
             right: 100,
@@ -19,6 +19,8 @@ const Chart = (() => {
             bottom: 50,
             left: 0
         },
+
+        // SingleTon
         globalStyle: {
             // yLabelAlign
             // : right
@@ -32,19 +34,13 @@ const Chart = (() => {
             xLabelAlign: "bottom",
             xLabelHeight: 30,
 
-            axisColor: '',
-            splitAxisColor: '',
-            textColor: ''
-        },
-        dateFormatter: "MM-dd HH:mm"
-    };
-    
-    const themes = {
-        gray: {
-            backgroundColor: '#f5f5f5',
             textColor: '#5d5d5d',
             axisColor: '#999',
-            splitAxisColor: 'rgba(0,0,0,0.05)',
+            splitAxisColor: 'rgba(0,0,0,0.05)'
+        },
+        layerType: 'candle', // candle , line
+        // Fixed
+        layerStyle: {
             candle: {
                 incrementItemColor: '#14b143',
                 decrementItemColor: '#ef232a',
@@ -54,18 +50,28 @@ const Chart = (() => {
                 itemColor: '#000000'
             }
         },
+        dateFormatter: "MM-dd HH:mm"
+    };
+
+    const themes = {
+        gray: {
+            globalStyle: {},
+            layerStyle: {
+                candle: {},
+                line: {}
+            }
+        },
         dark: {
             backgroundColor: '#151515',
-            textColor: '#aaa',
-            axisColor: '#999',
-            splitAxisColor: 'rgba(255,255,255,0.1)',
-            candle: {
-                incrementItemColor: '#14b143',
-                decrementItemColor: '#ef232a',
-                minBodyWidth: 6
+            globalStyle: {
+                textColor: '#aaa',
+                splitAxisColor: 'rgba(255,255,255,0.1)',
             },
-            line: {
-                itemColor: '#999'
+            layerStyle: {
+                candle: {},
+                line: {
+                    itemColor: '#999'
+                }
             }
         }
     };
@@ -79,9 +85,9 @@ const Chart = (() => {
             style
         }, {
             open,
-            close,
-            high,
-            low
+                close,
+                high,
+                low
         }) => {
             let y = transform(Math.max(open, close)),
                 h = transform(Math.min(open, close)) - y,
@@ -202,17 +208,15 @@ const Chart = (() => {
     };
 
     class Chart {
-        addTheme(name, th) {
-            _addTheme(name, th);
-        }
         constructor(domId) {
             let wrapper = document.getElementById(domId);
+            let theme;
 
             if (wrapper === null) {
                 return;
             }
 
-            let theme;
+            const initLayerStyle = {};
 
             /* wrapper style settings */
             wrapper.style.position = 'relative';
@@ -266,8 +270,6 @@ const Chart = (() => {
             const floatCtx = makeCanvas().context;
             const tooltipCtx = makeCanvas(10000).context;
 
-            let styleForTypes;
-
             // 레이어 메소드
             const addLayer = (name, {
                 type,
@@ -279,9 +281,9 @@ const Chart = (() => {
                 }
                 let layer = makeCanvas();
 
-                layer.type = type || init.layer.type;
-                layer.data = data ? data : [];
-                layer.style = overwrite(style, styleForTypes[layer.type]);
+                layer.type = type || init.layerType;
+                layer.data = data || [];
+                layer.style = overwrite(style, initLayerStyle[layer.type]);
 
                 layers[name] = layer;
                 updateMinMax();
@@ -295,15 +297,14 @@ const Chart = (() => {
                 let layer = layers[name];
 
                 // type 변경시 type에 영향이 가는 레이어속성들을 새로설정.
-                let baseStyle = layer.style;
-                if (type !== undefined && type !== layer.type) {
-                    layer.style = {};
-                    baseStyle = styleForTypes[type];
-                }
+                const baseStyle = type !== undefined && type !== layer.type ?
+                    layer.style :
+                    initLayerStyle[type];
 
                 layer.type = type || layer.type;
-                layer.data = data ? data : layer.data;
+                layer.data = data || layer.data;
                 layer.style = overwrite(style, baseStyle);
+
                 updateMinMax();
 
                 render(layer);
@@ -669,7 +670,7 @@ const Chart = (() => {
             // - seyLayer
             // - setTimeline
 
-            let reloadTooltip = () => {};
+            let reloadTooltip = () => { };
 
             const showTooltip =
                 (() => {
@@ -778,23 +779,29 @@ const Chart = (() => {
                     };
                 })();
 
+            const updateInitLayerStyleByTheme = () => {
+                initLayerStyle.candle = overwrite(theme.layerStyle.candle, init.layerStyle.candle);
+                initLayerStyle.line = overwrite(theme.layerStyle.line, init.layerStyle.line);
+            };
+
+            const updateWrapperStyle = () => {
+                wrapper.style.backgroundColor = theme.backgroundColor || init.backgroundColor;
+            };
+
             const setTheme = themeName => {
                 theme = themes[themeName];
 
-                wrapper.style.backgroundColor = theme.backgroundColor;
-
-                styleForTypes = {};
-                styleForTypes.candle = overwrite(null, theme.candle);
-                styleForTypes.line = overwrite(null, theme.line);
+                updateWrapperStyle();
+                globalStyle = overwrite(theme.globalStyle, globalStyle);
+                updateInitLayerStyleByTheme();
 
                 // 모든 레이어에 기본 스타일 적용.
-                layerMap((layer, name) => setLayer(name, {
-                    style: styleForTypes[layer.type]
-                }));
-
-                globalStyle.axisColor = theme.axisColor;
-                globalStyle.splitAxisColor = theme.splitAxisColor;
-                globalStyle.textColor = theme.textColor;
+                layerMap(
+                    (layer, name) =>
+                        setLayer(name, {
+                            style: initLayerStyle[layer.type]
+                        })
+                );
 
                 renderAll();
             };
@@ -820,7 +827,7 @@ const Chart = (() => {
             this.render = () => renderAll();
             this.setTheme = setTheme;
             this.resize = resize;
-            this.onSelect = () => {};
+            this.onSelect = () => { };
             this.setDateFormatter = setDateFormatter;
         }
     }

@@ -5,8 +5,7 @@ Chart.addTheme("blue", {
     splitAxisColor: 'rgba(255,255,255,0.1)',
     candle: {
         incrementItemColor: '#01DF3A',
-        decrementItemColor: '#FA5858',
-        minBodyWidth: 6
+        decrementItemColor: '#FA5858'
     },
     line: {
         itemColor: '#999'
