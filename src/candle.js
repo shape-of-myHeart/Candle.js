@@ -35,7 +35,9 @@ const Chart = (() => {
 
             textColor: '#5d5d5d',
             axisColor: '#999',
-            splitAxisColor: 'rgba(0,0,0,0.05)'
+            splitAxisColor: 'rgba(0,0,0,0.05)',
+
+            tooltipBackgroundColor: 'rgba(0,0,0,0.6)'
         },
         layerType: 'candle', // candle , line
 
@@ -53,13 +55,7 @@ const Chart = (() => {
     };
 
     const themes = {
-        gray: {
-            globalStyle: {},
-            layerStyle: {
-                candle: {},
-                line: {}
-            }
-        },
+        gray: { globalStyle: {}, layerStyle: { candle: {}, line: {} } },
         dark: {
             globalStyle: {
                 backgroundColor: '#151515',
@@ -209,11 +205,9 @@ const Chart = (() => {
     class Chart {
         constructor(domId) {
             let wrapper = document.getElementById(domId);
-            let theme;
+            if (wrapper === null) return;
 
-            if (wrapper === null) {
-                return;
-            }
+            let theme;
 
             const initLayerStyle = {};
 
@@ -265,7 +259,7 @@ const Chart = (() => {
             // - setTimeline 로 x축 값이 변경 되었을 경우.
             const yLabelCtx = makeCanvas().context;
             const xLabelCtx = makeCanvas().context;
-            // Float 캔버스 Context 정의
+
             const floatCtx = makeCanvas().context;
             const tooltipCtx = makeCanvas(10000).context;
 
@@ -671,7 +665,6 @@ const Chart = (() => {
             // - setTimeline
 
             let reloadTooltip = () => { };
-
             const showTooltip =
                 (() => {
                     const render = ({
@@ -832,8 +825,6 @@ const Chart = (() => {
             this.setDateFormatter = setDateFormatter;
         }
     }
-
-    // define prototype logics
     Chart.addTheme = (name, th) => themes[name] = th;
     Chart.calculateMA = (dayCount, data) => {
         let result = [],
