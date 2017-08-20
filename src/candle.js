@@ -1,6 +1,5 @@
 const Chart = (() => {
     const init = {
-        backgroundColor: '#f5f5f5',
         // type 에 의존하는 속성값들
         // - renderItem (renderForTypes 변수 참조.)
         // - 항상최솟값을 같는 key 값을 반환하는 함수. (getMinForTypes 참조)
@@ -20,8 +19,8 @@ const Chart = (() => {
             left: 0
         },
 
-        // SingleTon
         globalStyle: {
+            backgroundColor: '#f5f5f5',
             // yLabelAlign
             // : right
             // : left
@@ -39,7 +38,7 @@ const Chart = (() => {
             splitAxisColor: 'rgba(0,0,0,0.05)'
         },
         layerType: 'candle', // candle , line
-        // Fixed
+
         layerStyle: {
             candle: {
                 incrementItemColor: '#14b143',
@@ -62,8 +61,8 @@ const Chart = (() => {
             }
         },
         dark: {
-            backgroundColor: '#151515',
             globalStyle: {
+                backgroundColor: '#151515',
                 textColor: '#aaa',
                 splitAxisColor: 'rgba(255,255,255,0.1)',
             },
@@ -311,15 +310,16 @@ const Chart = (() => {
                 reloadTooltip();
             };
             const layerMap = (func, formatter) => {
-                let lKeys = Object.keys(layers),
-                    result = [];
+                let lKeys = Object.keys(layers);
+                let rObj = [];
 
                 for (let i = 0; i < lKeys.length; i++) {
-                    let key = lKeys[i];
-                    result[typeof formatter === 'function' ? formatter(key) : i] = func(layers[key], key);
+                    let key = lKeys[i], r = func(layers[key], key);
+                    if (formatter) rObj[formatter(key)] = r;
+                    else rObj.push(r);
                 }
 
-                return result;
+                return rObj;
             };
 
             // 뷰포트 메소드
@@ -783,19 +783,20 @@ const Chart = (() => {
                 initLayerStyle.candle = overwrite(theme.layerStyle.candle, init.layerStyle.candle);
                 initLayerStyle.line = overwrite(theme.layerStyle.line, init.layerStyle.line);
             };
-
             const updateWrapperStyle = () => {
-                wrapper.style.backgroundColor = theme.backgroundColor || init.backgroundColor;
+                wrapper.style.backgroundColor = globalStyle.backgroundColor;
             };
-
             const setTheme = themeName => {
                 theme = themes[themeName];
 
-                updateWrapperStyle();
+                // 전역 스타일 업데이트.
                 globalStyle = overwrite(theme.globalStyle, globalStyle);
-                updateInitLayerStyleByTheme();
+                // Wrapper 스타일 업데이트.
+                updateWrapperStyle();
 
-                // 모든 레이어에 기본 스타일 적용.
+                // 레이어 기본 스타일 업데이트.
+                updateInitLayerStyle();
+                // 레이어 스타일 적용.
                 layerMap(
                     (layer, name) =>
                         setLayer(name, {
