@@ -777,6 +777,7 @@ const Chart = (() => {
                 initLayerStyle.line = overwrite(theme.layerStyle.line, init.layerStyle.line);
             };
             const updateWrapperStyle = () => {
+                // 은 개념적으로는 globalStyle 이지만 다른 globalStyle 속성들과는 다르게 렌더링 도중에 값이 업데이트 되지않음.
                 wrapper.style.backgroundColor = globalStyle.backgroundColor;
             };
             const setTheme = themeName => {
