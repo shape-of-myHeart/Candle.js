@@ -53,7 +53,7 @@ const Chart = (() => {
         },
         dateFormatter: "MM-dd HH:mm"
     };
-
+    // theme 은 globalStyle layerStyle 을 지정 가능
     const themes = {
         gray: { globalStyle: {}, layerStyle: { candle: {}, line: {} } },
         dark: {
