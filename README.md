@@ -37,9 +37,9 @@ const chart = new Chart('stock-board');
 
 chart.setTimeline(data.map(item => item.CreateTime));
 chart.addLayer(
-  'candle',
+  'layerName',
   {
-      type: 'layerName',
+      type: 'candle',
       data: data.map(
         item => ({
             open: item.OpenPrice,
