@@ -31,17 +31,3 @@ candle.js의 개발지향점은 다음과 같습니다.
 </p>
 
 <h2>Examples</h2>
-<p>
-<pre><code>
-class HelloMessage extends React.Component {
-  render() {
-    return <div>Hello {this.props.name}</div>;
-  }
-}
-
-ReactDOM.render(
-  <HelloMessage name="John" />,
-  document.getElementById('container')
-);
-</code></pre>
-</p>
