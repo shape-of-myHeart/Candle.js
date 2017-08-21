@@ -39,7 +39,7 @@ chart.setTimeline(data.map(item => item.CreateTime));
 chart.addLayer(
   'candle',
   {
-      type: 'candle',
+      type: 'layerName',
       data: data.map(
         item => ({
             open: item.OpenPrice,
