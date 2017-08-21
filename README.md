@@ -32,15 +32,24 @@ candle.js의 개발지향점은 다음과 같습니다.
 
 <h2>Examples</h2>
 
-```jsx
-class HelloMessage extends React.Component {
-  render() {
-    return <div>Hello {this.props.name}</div>;
-  }
-}
+```js
+const chart = new Chart('stock-board');
 
-ReactDOM.render(
-  <HelloMessage name="John" />,
-  document.getElementById('container')
+chart.setTimeline(data.map(item => item.CreateTime));
+chart.addLayer(
+  'candle',
+  {
+      type: 'candle',
+      data: data.map(
+        item => ({
+            open: item.OpenPrice,
+            close: item.ClosePrice,
+            high: item.HighPrice,
+            low: item.LowPrice
+        })
+      )
+  }
 );
+
+chart.render();
 ```
