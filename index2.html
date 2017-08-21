@@ -10,7 +10,7 @@
 
     <style>
         body {
-            background: #eee;
+            background: #fff;
         }
 
         #stock-board {
@@ -26,9 +26,10 @@
 <body>
     <section id="stock-board"></section>
     <script src="./data.js"></script>
+    <script src="./src/themes/candle-js-theme-skyblue.js"></script>
     <script>
         const chart = new Chart('stock-board');
-
+        // chart.setTheme('blue');
         chart.setTimeline(data.map(item => item.CreateTime));
 
         chart.addLayer('candle', {
@@ -57,29 +58,24 @@
             }
         });
 
-        chart.render();
-
-        chart.onSelect = (time, datas, tooltip) => {
-            tooltip(
-                'candle', {
-                    titles: {
-                        // candle: {
-                        //     open: 'Open',
-                        //     close: 'Close',
-                        //     low: 'Low',
-                        //     high: 'High'
-                        // },
-                        ma10: 'Ma10',
-                        ma30: 'Ma30'
-                    },
-                    filters: ['candle'],
-                    formatters: {
-                        ma10: v => v && Math.floor(v),
-                        ma30: v => v && Math.floor(v)
-                    },
-                }
-            );
-        };
+        chart.setTooltip({
+            show: true,
+            mainCandle: 'candle',
+            titles: {
+                candle: {
+                    open: 'O',
+                    close: 'C',
+                    low: 'L',
+                    high: 'H'
+                },
+                ma10: 'Ma10',
+                ma30: 'Ma30',
+            },
+            formatters: {
+                ma10: v => v && Math.floor(v),
+                ma30: v => v && Math.floor(v)
+            },
+        });
     </script>
 </body>
 

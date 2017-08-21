@@ -6,19 +6,6 @@ const Chart = (() => {
         // - 항상최대값을 같는 key 값을 반환하는 함수. (getMaxForTypes 참조)
         // - style의 일부 속성들
 
-        grid: {
-            top: 0,
-            right: 100,
-            bottom: 30,
-            left: 0
-        },
-        padding: {
-            top: 50,
-            right: 0,
-            bottom: 50,
-            left: 0
-        },
-
         globalStyle: {
             backgroundColor: '#f5f5f5',
             // yLabelAlign
@@ -33,14 +20,22 @@ const Chart = (() => {
             xLabelAlign: "bottom",
             xLabelHeight: 30,
 
-            textColor: '#5d5d5d',
+            textColor: '#fff',
+            labelColor: '#5d5d5d',
             axisColor: '#999',
             splitAxisColor: 'rgba(0,0,0,0.05)',
 
-            tooltipBackgroundColor: 'rgba(0,0,0,0.6)'
-        },
-        layerType: 'candle', // candle , line
+            tooltipTitleColor: '#333',
+            tooltipBackgroundColor: 'rgba(0,0,0,0.6)',
+            tooltipXAlign: 'left',
+            tooltipYAlign: 'top',
+            tooltipMinWidth: 100,
 
+            focusBackgroundColor: 'rgba(0, 175, 255, 0.1)',
+            focusBorderColor: 'rgba(0, 175, 255, 0.2)'
+        },
+
+        layerType: 'candle', // candle , line
         layerStyle: {
             candle: {
                 incrementItemColor: '#14b143',
@@ -51,16 +46,39 @@ const Chart = (() => {
                 itemColor: '#000000'
             }
         },
+
+        // 라벨속성에 따라 값이 맞춰진다.
+        grid: {
+            top: 0,
+            right: 100,
+            bottom: 30,
+            left: 0
+        },
+
+        padding: {
+            top: 50,
+            right: 0,
+            bottom: 50,
+            left: 0
+        },
         dateFormatter: "MM-dd HH:mm"
     };
     // theme 은 globalStyle layerStyle 을 지정 가능
     const themes = {
-        gray: { globalStyle: {}, layerStyle: { candle: {}, line: {} } },
+        gray: {
+            globalStyle: {},
+            layerStyle: {
+                candle: {},
+                line: {}
+            }
+        },
         dark: {
             globalStyle: {
                 backgroundColor: '#151515',
-                textColor: '#aaa',
+                labelColor: '#aaa',
                 splitAxisColor: 'rgba(255,255,255,0.1)',
+
+                tooltipBackgroundColor: 'rgba(255,255,255,0.1)'
             },
             layerStyle: {
                 candle: {},
@@ -80,9 +98,9 @@ const Chart = (() => {
             style
         }, {
             open,
-                close,
-                high,
-                low
+            close,
+            high,
+            low
         }) => {
             let y = transform(Math.max(open, close)),
                 h = transform(Math.min(open, close)) - y,
@@ -134,13 +152,13 @@ const Chart = (() => {
         candle: ({
             title,
             data,
-            formatter
-        }) => data === null ? null : `${title.open || 'Open'}: ${formatter(data.open)} ${title.close || 'Close'}: ${formatter(data.close)} ${title.low || 'Low'}: ${formatter(data.low)} ${title.high || 'High'}: ${formatter(data.high)}`,
+            formatter = v => v
+        }) => data === null ? null : [`${title.open || 'Open'} ${formatter(data.open)}`, `${title.close || 'Close'} ${formatter(data.close)}`, `${title.low || 'Low'} ${formatter(data.low)}`, `${title.high || 'High'} ${formatter(data.high)}`],
         line: ({
             title,
             data,
-            formatter,
-        }) => data === null ? null : `${title}: ${formatter(data)}`
+            formatter = v => v,
+        }) => data === null ? null : `${title} ${formatter(data)}`
     };
     const getMinForTypes = {
         candle: item => item.low,
@@ -279,8 +297,9 @@ const Chart = (() => {
                 layer.style = overwrite(style, initLayerStyle[layer.type]);
 
                 layers[name] = layer;
+
                 updateMinMax();
-                reloadTooltip();
+                renderAll();
             };
             const setLayer = (name, {
                 type,
@@ -290,9 +309,10 @@ const Chart = (() => {
                 let layer = layers[name];
 
                 // type 변경시 type에 영향이 가는 레이어속성들을 새로설정.
-                const baseStyle = type !== undefined && type !== layer.type ?
-                    layer.style :
-                    initLayerStyle[type];
+                const baseStyle =
+                    (type !== undefined && type !== layer.type) ?
+                    initLayerStyle[type] :
+                    layer.style;
 
                 layer.type = type || layer.type;
                 layer.data = data || layer.data;
@@ -308,7 +328,8 @@ const Chart = (() => {
                 let rObj = [];
 
                 for (let i = 0; i < lKeys.length; i++) {
-                    let key = lKeys[i], r = func(layers[key], key);
+                    let key = lKeys[i],
+                        r = func(layers[key], key);
                     if (formatter) rObj[formatter(key)] = r;
                     else rObj.push(r);
                 }
@@ -333,26 +354,28 @@ const Chart = (() => {
                 }
                 reloadTooltip();
             };
+
             const setDateFormatter = f => {
                 dateFormatter = f;
-                renderAll();
+                renderXLabel();
             }
-
-            // 그리드 메소드
-            const setGrid = pGrid => {
-                grid = overwrite(pGrid, grid);
-                renderAll();
-            };
 
             // 패딩 메소드
             const setPadding = pPadding => {
-                padding = overwrite(pGrid, padding);
-                renderAll();
+                padding = overwrite(pPadding, padding);
+                layerMap(layer => render(layer));
             };
 
             // 스타일 메소드
             const setStyle = pStyle => {
-                style = overwrite(pStyle, style);
+                globalStyle = overwrite(pStyle, globalStyle);
+
+                grid.top = globalStyle.xLabelAlign === 'top' ? globalStyle.xLabelHeight : 0;
+                grid.bottom = globalStyle.xLabelAlign === 'bottom' ? globalStyle.xLabelHeight : 0;
+
+                grid.left = globalStyle.yLabelAlign === 'left' ? globalStyle.yLabelWidth : 0;
+                grid.right = globalStyle.yLabelAlign === 'right' ? globalStyle.yLabelWidth : 0;
+
                 renderAll();
             }
 
@@ -400,108 +423,95 @@ const Chart = (() => {
                 max = _max;
             };
 
-            // 출력 메소드
-            const render = layer => {
+            const renderXLabel = () => {
                 let {
                     xLabelHeight,
                     xLabelAlign,
-                    yLabelWidth,
-                    yLabelAlign
                 } = globalStyle;
-
-                let {
-                    data,
-                    type,
-                    context,
-                    canvas,
-                    style
-                } = layer;
 
                 let width = wrapper.clientWidth,
                     height = wrapper.clientHeight;
-
-                if (viewport[0] === undefined || viewport[1] === undefined) {
-                    setViewport(0, timeline.length);
-                }
-
-                // 레이어 타입에 따른 메소드를 가져온다.
-                let renderItem = renderForTypes[type];
 
                 // Transform Size
                 let {
                     tWidth,
                     tHeight,
                 } = getTransformSize();
+
                 let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
 
-                context.save();
                 xLabelCtx.save();
-                yLabelCtx.save();
-
-                // Clear
-                context.clearRect(-10, -10, width + 10, height + 10);
                 xLabelCtx.clearRect(-10, -10, width + 10, height + 10);
-                yLabelCtx.clearRect(-10, -10, width + 10, height + 10);
-
-                // Translate
-                context.translate(grid.left, tHeight + grid.top);
                 xLabelCtx.translate(grid.left, 0);
-                yLabelCtx.translate(0, tHeight + grid.top);
 
                 // Xlabel Settings
                 xLabelCtx.textBaseline = "middle";
                 xLabelCtx.textAlign = "left";
                 xLabelCtx.font = "12px 'Apple SD Gothic Neo',arial,sans-serif";
 
-                let xLineY = f(xLabelAlign === 'top' ? xLabelHeight : height - xLabelHeight);
+                let xLineY = f(grid.top + (height - xLabelHeight));
                 let xLineLabelY = xLabelAlign === 'top' ? (xLabelHeight / 2) : height - (xLabelHeight / 2);
+                let xAxisY = xLabelAlign === 'bottom' ? xLineY : grid.top;
 
                 xLabelCtx.strokeStyle = globalStyle.axisColor;
                 xLabelCtx.beginPath();
-                xLabelCtx.moveTo(0, xLineY);
-                xLabelCtx.lineTo(tWidth, xLineY);
+                xLabelCtx.moveTo(0, xAxisY);
+                xLabelCtx.lineTo(tWidth, xAxisY);
                 xLabelCtx.closePath();
                 xLabelCtx.stroke();
 
-                context.beginPath();
-
                 for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
-                    renderItem({
-                        ctx: context,
-                        itemWidth,
-                        transform: v => -map(v, min, max, padding.top, tHeight - padding.bottom),
-                        style
-                    }, data[i]);
-
                     if (viewport[0] - l === -1 || (l - i) % s === 0) {
                         let xLineLabelX = f(itemWidth * 0.5);
 
                         xLabelCtx.strokeStyle = globalStyle.axisColor;
                         xLabelCtx.beginPath();
-                        xLabelCtx.moveTo(xLineLabelX, xLineY);
-                        xLabelCtx.lineTo(xLineLabelX, xLineY + 5);
+                        xLabelCtx.moveTo(xLineLabelX, xAxisY + (xLabelAlign === 'bottom' ? 5 : -5));
+                        xLabelCtx.lineTo(xLineLabelX, xAxisY);
                         xLabelCtx.closePath();
                         xLabelCtx.stroke();
 
                         xLabelCtx.strokeStyle = globalStyle.splitAxisColor;
                         xLabelCtx.beginPath();
-                        xLabelCtx.moveTo(xLineLabelX, 0);
+                        xLabelCtx.moveTo(xLineLabelX, grid.top);
                         xLabelCtx.lineTo(xLineLabelX, xLineY);
                         xLabelCtx.closePath();
                         xLabelCtx.stroke();
 
-                        xLabelCtx.fillStyle = globalStyle.textColor;
+                        xLabelCtx.fillStyle = globalStyle.labelColor;
                         xLabelCtx.fillText(
                             applyDateFormatter(timeline[i], dateFormatter),
                             f(xLineLabelX),
                             f(xLineLabelY)
                         );
                     }
-                    context.translate(itemWidth, 0);
                     xLabelCtx.translate(itemWidth, 0);
                 }
-                context.stroke();
-                context.closePath();
+
+                xLabelCtx.restore();
+            };
+
+            const renderYLabel = () => {
+                let {
+                    yLabelWidth,
+                    yLabelAlign
+                } = globalStyle;
+
+                let width = wrapper.clientWidth,
+                    height = wrapper.clientHeight;
+
+                // Transform Size
+                let {
+                    tWidth,
+                    tHeight,
+                } = getTransformSize();
+
+                let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
+
+
+                yLabelCtx.save();
+                yLabelCtx.clearRect(-10, -10, width + 10, height + 10);
+                yLabelCtx.translate(0, tHeight + grid.top);
 
                 // Ylabel Settings
                 yLabelCtx.textBaseline = "middle";
@@ -530,7 +540,7 @@ const Chart = (() => {
 
                 let rd = f(min - (min % tempSplit));
 
-                yLabelCtx.fillStyle = globalStyle.textColor;
+                yLabelCtx.fillStyle = globalStyle.labelColor;
 
                 for (let i = 0; i < split; i++) {
                     let d = rd + tempSplit * i;
@@ -539,7 +549,7 @@ const Chart = (() => {
 
                     let y = -map(d, min, max, 0, tHeight);
 
-                    yLabelCtx.fillText(d.toString(), yLineX + 5, y);
+                    yLabelCtx.fillText(d.toString(), yLineX + (yLabelAlign === 'right' ? 5 : -5), y);
 
                     yLabelCtx.strokeStyle = globalStyle.splitAxisColor;
                     yLabelCtx.beginPath();
@@ -550,11 +560,69 @@ const Chart = (() => {
                 }
 
                 yLabelCtx.restore();
-                xLabelCtx.restore();
+            };
+
+            // 출력 메소드
+            const render = layer => {
+                let {
+                    data,
+                    type,
+                    context,
+                    canvas,
+                    style
+                } = layer;
+
+                let width = wrapper.clientWidth,
+                    height = wrapper.clientHeight;
+
+                if (viewport[0] === undefined || viewport[1] === undefined) {
+                    setViewport(0, timeline.length);
+                }
+
+                // 레이어 타입에 따른 메소드를 가져온다.
+                let renderItem = renderForTypes[type];
+
+                // Transform Size
+                let {
+                    tWidth,
+                    tHeight,
+                } = getTransformSize();
+
+                let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
+
+                context.save();
+
+                // Clear
+                context.clearRect(-10, -10, width + 10, height + 10);
+
+                // Translate
+                context.translate(grid.left, tHeight + grid.top);
+
+                context.beginPath();
+
+                for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
+                    renderItem({
+                        ctx: context,
+                        itemWidth,
+                        transform: v => -map(v, min, max, padding.top, tHeight - padding.bottom),
+                        style
+                    }, data[i]);
+                    context.translate(itemWidth, 0);
+                }
+                context.stroke();
+                context.closePath();
+
                 context.restore();
             };
 
-            const renderAll = () => layerMap(layer => render(layer));
+            const renderAll = () => {
+                layerMap(layer => render(layer));
+
+                renderXLabel();
+                renderYLabel();
+
+                reloadTooltip();
+            };
 
             // 이벤트 리스너 등록
             // 줌 Zoom
@@ -641,8 +709,8 @@ const Chart = (() => {
 
                 floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
 
-                floatCtx.fillStyle = "rgba(0, 175, 255, 0.1)";
-                floatCtx.strokeStyle = "rgba(0, 175, 255, 0.2)";
+                floatCtx.fillStyle = globalStyle.focusBackgroundColor;
+                floatCtx.strokeStyle = globalStyle.focusBorderColor;
 
                 floatCtx.fillRect(screenIndex * itemWidth, grid.top, itemWidth, tHeight);
                 floatCtx.strokeRect(screenIndex * itemWidth, grid.top, itemWidth, tHeight);
@@ -656,25 +724,55 @@ const Chart = (() => {
                     );
                 let time = new Date(timeline[index]);
 
-                this.onSelect(time, datas, showTooltip(index));
+                this.onSelect(time, datas);
+                showTooltip(index);
             };
 
-            // reloadTooltip
-            // - addLayer
-            // - seyLayer
-            // - setTimeline
+            let tooltipOptions = {
+                show: false,
+                forammters: {},
+                titles: {},
+                filters: [],
+                mainCandle: ''
+            };
+            const setTooltip = (options = {}) => {
+                tooltipOptions = overwrite(options, tooltipOptions);
+                reloadTooltip();
+            };
 
-            let reloadTooltip = () => { };
+            let lastTooltipIndex = null;
+            const reloadTooltip = () => lastTooltipIndex !== null && showTooltip(lastTooltipIndex);
+
             const showTooltip =
                 (() => {
                     const render = ({
+                        ctx,
                         texts,
-                        maxWidth,
                         lineHeight,
+                        minWidth = globalStyle.tooltipMinWidth,
                         notRender = false
                     }) => {
                         let lineCount = 1;
                         let lineWidth = 0;
+                        let space = 10;
+                        let rendered = false;
+                        let maxWidth = -Infinity;
+
+                        texts.map(
+                            text => {
+                                let width;
+
+                                if (Array.isArray(text.text) === true) {
+                                    width = ctx.measureText(text.text.join('')).width + ((text.text.length - 1) * space);
+                                } else {
+                                    width = ctx.measureText(text.text).width;
+                                }
+
+                                text.width = width;
+
+                                if (width > maxWidth) maxWidth = width;
+                            }
+                        );
 
                         for (let i = 0; i < texts.length; i++) {
 
@@ -683,7 +781,7 @@ const Chart = (() => {
                             if (maxWidth < lineWidth + text.width) {
 
                                 if (notRender !== true) {
-                                    tooltipCtx.translate(0, lineHeight);
+                                    ctx.translate(0, lineHeight);
                                 }
                                 lineWidth = 0;
                                 lineCount++;
@@ -691,36 +789,51 @@ const Chart = (() => {
                             }
                             if (notRender !== true) {
 
-                                tooltipCtx.fillStyle = text.color;
-                                tooltipCtx.fillText(text.text, lineWidth, 0);
+                                ctx.fillStyle = text.color;
+
+                                if (Array.isArray(text.text) === true) {
+                                    let l = 0;
+                                    for (let j = 0; j < text.text.length; j++) {
+                                        ctx.fillText(text.text[j], l + j * space, 0);
+                                        l += ctx.measureText(text.text[j]).width;
+                                    }
+                                } else ctx.fillText(text.text, lineWidth, 0);
 
                             }
-                            lineWidth += text.width + 10;
+                            lineWidth += text.width + space;
+                            rendered = true;
                         }
 
-                        return lineCount;
+                        lineCount = rendered === false ? 0 : lineCount;
+
+                        return {
+                            lineCount,
+                            height: lineCount * lineHeight,
+                            width: Math.max(maxWidth, minWidth)
+                        };
                     };
+                    const setFont = (front, fontSize) => {};
+                    return (index) => {
+                        let {
+                            show,
+                            filters,
+                            formatters,
+                            titles,
+                            mainCandle
+                        } = tooltipOptions;
 
-                    return index => (mainLayerName, {
-                        titles = {},
-                        formatters = {},
-                        filters = []
-                    }) => {
-
-                        let mainLayer = layers[mainLayerName],
-                            mainData = mainLayer.data[index],
-                            texts = [],
-                            fontSize = 13,
-                            lineHeight = fontSize * 1.2,
-                            maxWidth = -Infinity
-                            // maxWidth = 300 (px)
-                            ;
-
-                        tooltipCtx.save();
                         tooltipCtx.clearRect(-10, -10, wrapper.clientWidth + 20, wrapper.clientHeight + 20);
 
-                        tooltipCtx.font = `${fontSize}px 'Apple SD Gothic Neo',arial,sans-serif`;
-                        tooltipCtx.textBaseline = "middle";
+                        if (show !== true) return;
+
+                        let texts = [],
+                            fontSize = 13,
+                            lineHeight = fontSize * 1.2;
+                        // maxWidth = 300 (px)
+                        ;
+
+                        tooltipCtx.font = `${fontSize}px 'Apple SD Gothic Neo', arial, sans-serif`;
+                        tooltipCtx.textBaseline = "top";
 
                         layerMap((layer, name) => {
                             if (filters.indexOf(name) !== -1) {
@@ -729,46 +842,107 @@ const Chart = (() => {
                             let text = tooltipForTypes[layer.type]
                                 ({
                                     title: titles[name] || name,
+                                    formatter: formatters[name],
                                     data: layer.data[index],
-                                    formatter: formatters[name] || (v => v),
                                 });
 
                             if (text === null) return;
 
-                            let width = tooltipCtx.measureText(text).width;
-
                             texts.push({
                                 text,
-                                width,
-                                color: layer.style.itemColor || '#ffffff'
+                                color: layer.style.itemColor || globalStyle.textColor
                             });
-
-                            if (width > maxWidth) maxWidth = width;
                         });
+
+                        tooltipCtx.save();
 
                         let rTooltip =
                             b => render({
+                                ctx: tooltipCtx,
                                 texts,
-                                maxWidth,
                                 lineHeight,
                                 notRender: b
                             });
+                        let pVertical = 10;
+                        let pHorizontal = 20;
 
-                        tooltipCtx.fillStyle = 'rgba(0,0,0,0.6)';
-                        tooltipCtx.fillRect(5, 5, maxWidth + 10, rTooltip(true) * lineHeight + 5);
+                        let r = rTooltip(true),
+                            rHeight = r.height + pVertical,
+                            rWidth = r.width + pHorizontal;
 
-                        tooltipCtx.translate(10, 15);
+                        let {
+                            tWidth,
+                            tHeight
+                        } = getTransformSize();
+
+                        // 타이틀 세팅
+                        // const titleFont = "bold 18px 'Apple SD Gothic Neo',arial,sans-serif";
+                        // tooltipCtx.save();
+                        // tooltipCtx.font = titleFont;
+
+                        // let title = applyDateFormatter(timeline[index], 'yyyy-MM-dd hh:mm:ss'),
+                        //     titleWidth = tooltipCtx.measureText(title).width;
+
+                        // rWidth = Math.max(rWidth, titleWidth + 10);
+                        // tooltipCtx.restore();
+                        /////////////////////////
+
+                        tooltipCtx.translate(grid.left, grid.top);
+
+                        if (globalStyle.tooltipXAlign === 'left') {
+                            tooltipCtx.translate(5, 0);
+                        } else if (globalStyle.tooltipXAlign === 'right') {
+                            tooltipCtx.translate(tWidth - rWidth - 15, 0);
+                        }
+                        if (globalStyle.tooltipYAlign === 'top') {
+                            tooltipCtx.translate(0, 5);
+                        } else if (globalStyle.tooltipYAlign === 'bottom') {
+                            tooltipCtx.translate(0, tHeight - rHeight - 5);
+                        }
+
+                        // // 타이틀 그리기
+                        // tooltipCtx.save();
+
+                        // tooltipCtx.font = titleFont;
+                        // tooltipCtx.fillStyle = globalStyle.tooltipTitleColor;
+
+                        // tooltipCtx.fillText(title, 0, 0);
+
+                        // tooltipCtx.restore();
+                        // /////////////////////////
+
+                        // tooltipCtx.translate(0, 23);
+
+                        if (mainCandle) {
+                            let {
+                                data,
+                                style
+                            } = layers[mainCandle];
+                            let {
+                                open,
+                                close
+                            } = data[index];
+
+                            tooltipCtx.globalAlpha = 0.8;
+                            tooltipCtx.fillStyle = open < close ?
+                                style.incrementItemColor : style.decrementItemColor;
+
+                            tooltipCtx.fillRect(0, 0, 10, rHeight);
+                            tooltipCtx.globalAlpha = 1;
+
+                            tooltipCtx.translate(10, 0);
+                        }
+
+                        tooltipCtx.fillStyle = globalStyle.tooltipBackgroundColor;
+                        tooltipCtx.fillRect(0.5, 0, rWidth, rHeight);
+
+                        tooltipCtx.translate(pHorizontal / 2, pVertical / 2);
 
                         rTooltip();
 
                         tooltipCtx.restore();
 
-                        reloadTooltip = () => showTooltip(index)
-                            (mainLayerName, {
-                                titles,
-                                formatters,
-                                filters
-                            });
+                        lastTooltipIndex = index;
                     };
                 })();
 
@@ -785,20 +959,23 @@ const Chart = (() => {
 
                 // 전역 스타일 업데이트.
                 globalStyle = overwrite(theme.globalStyle, globalStyle);
+
                 // Wrapper 스타일 업데이트.
                 updateWrapperStyle();
 
                 // 레이어 기본 스타일 업데이트.
                 updateInitLayerStyle();
+
                 // 레이어 스타일 적용.
                 layerMap(
                     (layer, name) =>
-                        setLayer(name, {
-                            style: initLayerStyle[layer.type]
-                        })
+                    setLayer(name, {
+                        style: initLayerStyle[layer.type]
+                    })
                 );
 
-                renderAll();
+                renderXLabel();
+                renderYLabel();
             };
             setTheme("gray");
 
@@ -817,13 +994,14 @@ const Chart = (() => {
             this.setViewport = setViewport;
             this.getViewport = getViewport;
             this.setTimeline = setTimeline;
-            this.setGrid = setGrid;
             this.setPadding = setPadding;
+            this.setStyle = setStyle;
             this.render = () => renderAll();
             this.setTheme = setTheme;
             this.resize = resize;
-            this.onSelect = () => { };
+            this.onSelect = () => {};
             this.setDateFormatter = setDateFormatter;
+            this.setTooltip = setTooltip;
         }
     }
     Chart.addTheme = (name, th) => themes[name] = th;

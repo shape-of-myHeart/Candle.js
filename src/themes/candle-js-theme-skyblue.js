@@ -1,14 +1,19 @@
 Chart.addTheme("blue", {
-    globalStyle:{
+    globalStyle: {
         backgroundColor: '#0431B4',
-        textColor: '#ccc',
+        labelColor: '#eee',
         axisColor: '#bbb',
-        splitAxisColor: 'rgba(255,255,255,0.1)'
+        splitAxisColor: 'rgba(255,255,255,0.1)',
+        tooltipTitleColor: '#E4E8F4',
+        textColor: '#E4E8F4',
+        tooltipBackgroundColor: 'rgba(255,255,255,0.1)',
+        focusBackgroundColor: "rgba(255,255,255,0.1)",
+        focusBorderColor: 'rgba(255,255,255,0.1)'
     },
-    layerStyle:{
+    layerStyle: {
         candle: {
-            incrementItemColor: '#01DF3A',
-            decrementItemColor: '#FA5858'
+            incrementItemColor: '#9299FF',
+            decrementItemColor: '#FA5858',
         },
         line: {
             itemColor: '#999'
