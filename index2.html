@@ -62,9 +62,6 @@
         chart.render();
 
         chart.onSelect = (time, datas, tooltip) => {
-            // 레이어 정보 미표시 가능
-            // delete datas.ma10;
-            // delete datas.ma30;
             tooltip(
                 'candle', {
                     titles: {
