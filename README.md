@@ -17,17 +17,31 @@ Candle.js 는 캔들차트를 그리기 위한 라이브러리입니다.<br/>
 candle.js의 개발지향점은 다음과 같습니다.
 <ol>
   <li>
-    속도와 용량이 가벼워야한다.
+    <b>속도와 용량이 가벼워야한다.</b>
     <ul>
       <li>DOM , SVG 출력을 하지 않는다.</li>
       <li>사용자에게 너무 많은 자유도를 주지않는다.</li>
       <li>사용자의 입력값에 대한 타입체크를 피한다.</li>
     </ul>
   </li>
-  <li>빌드환경이 가벼워야 한다.</li>
+  <li>
+    <b>빌드환경이 가벼워야 한다.</b>
+  </li>
 </ol>
 </p>
 
 <h2>Examples</h2>
-<blockquote>
-ㅁ</blockquote>
+<p>
+<pre><code>
+class HelloMessage extends React.Component {
+  render() {
+    return <div>Hello {this.props.name}</div>;
+  }
+}
+
+ReactDOM.render(
+  <HelloMessage name="John" />,
+  document.getElementById('container')
+);
+</code></pre>
+</p>
