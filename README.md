@@ -77,7 +77,7 @@ chart.render();
 * layer
 	* type
 		* candle
-     		* line
+		* line
 	* data
    		* 차트내 모든 레이어의 x 축은 timeline 데이터를 따르므로 이 속성은 y축 데이터를 의미합니다.
    	* style (layerStyle)
