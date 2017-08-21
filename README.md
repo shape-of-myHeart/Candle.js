@@ -31,15 +31,8 @@ candle.js의 개발지향점은 다음과 같습니다.
 </p>
 
 <h2>Examples</h2>
-```jsx
-class HelloMessage extends React.Component {
-  render() {
-    return <div>Hello {this.props.name}</div>;
-  }
-}
+```python
 
-ReactDOM.render(
-  <HelloMessage name="John" />,
-  document.getElementById('container')
-);
+'''파이썬 코드를 적어주세요. 이렇게 하면 파이썬 문법에 맞게 코드를 예쁘게 보여줍니다.'''
+
 ```
