@@ -41,8 +41,6 @@
             }))
         });
 
-        let toFixed = n => n && Number(n.toFixed(2));
-
         chart.addLayer('ma10', {
             type: 'line',
             data: Chart.calculateMA(10, data.map(item => item.ClosePrice)),
