@@ -30,6 +30,7 @@
     <script>
         const chart = new Chart('stock-board');
         // chart.setTheme('blue');
+        chart.setTheme('dark');
         chart.setTimeline(data.map(item => item.CreateTime));
 
         chart.addLayer('candle', {
