@@ -55,6 +55,30 @@ chart.render();
 ```
 
 <h2>Architecture</h2>
-<p>
-<img src="http://i.imgur.com/QqDMIgS.png"/>
-</p>
+<p><img src="http://i.imgur.com/QqDMIgS.png"/></p>
+
+1.	timeline
+	* 배열형태의 타임라인은 차트의 x 축 즉 시간축을 정의 합니다.
+	* 문자열로 된 시간데이터를 입력하면 자동으로 Date 타입으로 변경해줍니다.
+2.	style (globalStyle)
+	* 차트 전체의 스타일을 지정합니다.
+	* 레이어스타일과는 다른개념입니다.
+3.	themes
+	* theme 이란 레이어스타일과 globalStyle을 저장하고 불러올 수 있는 개념입니다.
+4.	viewport
+	* viewport 는 차트의 보여주는 영역을 타임라인의 인덱스값으로 표현한 개념 입니다.
+5.	events
+6.	grid
+    * 차트의 위치를 잡아줍니다.
+    * 이 속성을 이용해 x,y 라벨과의 위치를 맞출 수 있습니다.
+7.	padding
+    * 차트안에 여백을 줍니다.
+8. layer
+	* type
+		* candle
+     	* line
+    * data
+   		* 차트내 모든 레이어의 x 축은 timeline 데이터를 따르므로 이 속성은 y축 데이터를 의미합니다.
+   		* 레이어타입에 따라 데이터포맷이 달라질 수 있습니다.
+   	* style
+   		* 레이어 자체의 스타일을 지정할 수 있습니다.
