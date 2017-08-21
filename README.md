@@ -55,4 +55,4 @@ chart.render();
 ```
 
 <h2>Architecture</h2>
-<p><img src="http://i.imgur.com/QqDMIgS.png"/></p>
+<p><img src="http://i.imgur.com/61w1Cer.png"/></p>
