@@ -1,4 +1,4 @@
-<h2>Candle.js 개요</h2>
+<h2>Candle.js</h2>
 <p>
 Candle.js 는 캔들차트를 그리기 위한 라이브러리입니다.<br/>
 캔들차트가 주고, 보조지표에 필요한 다른 차트타입도 사용할 수 있습니다.
@@ -28,4 +28,6 @@ candle.js의 개발지향점은 다음과 같습니다.
 </ol>
 </p>
 
-<h2>API</h2>
+<h2>Examples</h2>
+<blockquote>
+ㅁ</blockquote>
