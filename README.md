@@ -64,7 +64,7 @@ chart.render();
 	* 차트 전체의 스타일을 지정합니다.
 	* 레이어스타일과는 다른개념입니다.
 3.	themes
-	* theme 이란 레이어스타일과 globalStyle을 저장하고 불러올 수 있는 개념입니다.
+	* theme 이란 layerStyle과 globalStyle의 설정을 저장한 개념입니다.
 4.	viewport
 	* viewport 는 차트의 보여주는 영역을 타임라인의 인덱스값으로 표현한 개념 입니다.
 5.	events
