@@ -56,5 +56,5 @@ chart.render();
 
 <h2>Architecture</h2>
 <p>
-<img src="http://i.imgur.com/sVdt2zS.png"/>
+<img src="http://i.imgur.com/QqDMIgS.png"/>
 </p>
