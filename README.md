@@ -31,7 +31,6 @@ candle.js의 개발지향점은 다음과 같습니다.
 </p>
 
 <h2>Examples</h2>
-
 ```js
 const chart = new Chart('stock-board');
 
@@ -53,3 +52,7 @@ chart.addLayer(
 
 chart.render();
 ```
+<h2>Architecture</h2>
+<p>
+<img src="http://i.imgur.com/f7AzlxX.png"/>
+</p>
