@@ -812,7 +812,6 @@ const Chart = (() => {
                             width: Math.max(maxWidth, minWidth)
                         };
                     };
-                    const setFont = (front, fontSize) => {};
                     return (index) => {
                         let {
                             show,
