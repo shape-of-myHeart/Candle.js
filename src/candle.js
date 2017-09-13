@@ -8,6 +8,8 @@ const Chart = (() => {
 
         globalStyle: {
             backgroundColor: '#f5f5f5',
+            fontFamily: `'Apple SD Gothic Neo',arial,sans-serif`,
+
             // yLabelAlign
             // : right
             // : left
@@ -27,9 +29,16 @@ const Chart = (() => {
 
             tooltipTitleColor: '#333',
             tooltipBackgroundColor: 'rgba(0,0,0,0.6)',
-            tooltipXAlign: 'left',
+            tooltipXAlign: 'right',
             tooltipYAlign: 'top',
             tooltipMinWidth: 100,
+            tooltipFontSize: 14,
+            tooltipXMargin: 5,
+            tooltipYMargin: 5,
+            tooltipXPadding: 10,
+            tooltipYPadding: 5,
+            tooltipCandleThick: 10,
+            tooltipLetterSpace: 10,
 
             focusBackgroundColor: 'rgba(0, 175, 255, 0.1)',
             focusBorderColor: 'rgba(0, 175, 255, 0.2)'
@@ -92,16 +101,16 @@ const Chart = (() => {
     // 레이어 타입에 따른 메소드 정의
     const renderForTypes = {
         candle: ({
-            ctx,
-            itemWidth,
-            transform,
-            style
-        }, {
-            open,
-            close,
-            high,
-            low
-        }) => {
+                     ctx,
+                     itemWidth,
+                     transform,
+                     style
+                 }, {
+                     open,
+                     close,
+                     high,
+                     low
+                 }) => {
             let y = transform(Math.max(open, close)),
                 h = transform(Math.min(open, close)) - y,
                 t = transform(high),
@@ -135,11 +144,11 @@ const Chart = (() => {
             ctx.strokeRect(2, f(y), f(itemWidth - 4), f(h));
         },
         line: ({
-            ctx,
-            itemWidth,
-            transform,
-            style
-        }, data) => {
+                   ctx,
+                   itemWidth,
+                   transform,
+                   style
+               }, data) => {
             if (data === null) return;
             let y = transform(data);
 
@@ -150,15 +159,15 @@ const Chart = (() => {
     };
     const tooltipForTypes = {
         candle: ({
-            title,
-            data,
-            formatter = v => v
-        }) => data === null ? null : [`${title.open || 'Open'} ${formatter(data.open)}`, `${title.close || 'Close'} ${formatter(data.close)}`, `${title.low || 'Low'} ${formatter(data.low)}`, `${title.high || 'High'} ${formatter(data.high)}`],
+                     title,
+                     data,
+                     formatter = v => v
+                 }) => data === null ? null : [`${title.open || 'Open'} ${formatter(data.open)}`, `${title.close || 'Close'} ${formatter(data.close)}`, `${title.low || 'Low'} ${formatter(data.low)}`, `${title.high || 'High'} ${formatter(data.high)}`],
         line: ({
-            title,
-            data,
-            formatter = v => v,
-        }) => data === null ? null : `${title} ${formatter(data)}`
+                   title,
+                   data,
+                   formatter = v => v,
+               }) => data === null ? null : `${title} ${formatter(data)}`
     };
     const getMinForTypes = {
         candle: item => item.low,
@@ -211,7 +220,7 @@ const Chart = (() => {
     const zf = (e, l) => {
         if (typeof e === "number") e = e.toString();
         if (typeof e === "string") {
-            var s = '',
+            let s = '',
                 i = 0;
             while (i++ < l - e.length) {
                 s += "0";
@@ -220,13 +229,29 @@ const Chart = (() => {
         }
     };
 
+    const $keys = [];
+
+    // private
+    const $methodByKey = {};
+
+    // public
+    const $setMethodByKey = (key, name, func) => {
+        if (!$methodByKey[key]) $methodByKey[key] = [];
+        $methodByKey[key][name] = func;
+        name !== '$On' && $methodByKey[key].$On && $methodByKey[key].$On(name);
+    };
+    const $getMethodByKey = (key, name) => $methodByKey[key][name];
+
     class Chart {
         constructor(domId) {
             let wrapper = document.getElementById(domId);
             if (wrapper === null) return;
 
-            let theme;
+            let $key;
+            while ($keys.indexOf($key = Math.random() + Math.random() + Math.random()) !== -1) {
+            }
 
+            let theme;
             const initLayerStyle = {};
 
             /* wrapper style settings */
@@ -259,8 +284,11 @@ const Chart = (() => {
 
             /* Variable 정의 */
             let layers = {};
-            let viewport = []; /* 0 : start / 1 : end */
+            let viewport = [];
+            /* 0 : start / 1 : end */
             let timeline = [];
+            let $timeline = [];
+
             let {
                 grid,
                 padding,
@@ -311,8 +339,8 @@ const Chart = (() => {
                 // type 변경시 type에 영향이 가는 레이어속성들을 새로설정.
                 const baseStyle =
                     (type !== undefined && type !== layer.type) ?
-                    initLayerStyle[type] :
-                    layer.style;
+                        initLayerStyle[type] :
+                        layer.style;
 
                 layer.type = type || layer.type;
                 layer.data = data || layer.data;
@@ -337,12 +365,29 @@ const Chart = (() => {
                 return rObj;
             };
 
-            // 뷰포트 메소드
-            const setViewport = (s, e) => {
+            const _setViewport = (s, e) => {
+                if (s < 0 || e < 0 || (viewport[0] === s && viewport[1] === e)) return;
+
                 viewport[0] = Math.min(s, e);
                 viewport[1] = Math.max(s, e);
+
                 updateMinMax();
                 renderAll();
+            };
+
+            // 뷰포트 메소드
+            const setViewport = (s, e) => {
+                if (s < 0 || e < 0 || (viewport[0] === s && viewport[1] === e)) return;
+
+                if (this.$rootConnect === null) {
+                    $methodByKey[$key]
+                        .dispatchSetViewport(s, e);
+                } else {
+                    $methodByKey[this.$rootConnect]
+                        .dispatchSetViewport(s, e);
+                }
+
+                _setViewport(s, e);
             };
             const getViewport = () => ([viewport[0], viewport[1]]);
 
@@ -352,13 +397,15 @@ const Chart = (() => {
                 for (let i = 0, l = pTimeline.length; i < l; i++) {
                     timeline.push(new Date(pTimeline[i]));
                 }
-                reloadTooltip();
+                $timeline = timeline;
+
+                renderAll();
             };
 
             const setDateFormatter = f => {
                 dateFormatter = f;
                 renderXLabel();
-            }
+            };
 
             // 패딩 메소드
             const setPadding = pPadding => {
@@ -377,7 +424,7 @@ const Chart = (() => {
                 grid.right = globalStyle.yLabelAlign === 'right' ? globalStyle.yLabelWidth : 0;
 
                 renderAll();
-            }
+            };
 
             const getTransformSize = () => ({
                 tWidth: wrapper.clientWidth - grid.right - grid.left,
@@ -447,7 +494,7 @@ const Chart = (() => {
                 // Xlabel Settings
                 xLabelCtx.textBaseline = "middle";
                 xLabelCtx.textAlign = "left";
-                xLabelCtx.font = "12px 'Apple SD Gothic Neo',arial,sans-serif";
+                xLabelCtx.font = `12px ${globalStyle.fontFamily}`;
 
                 let xLineY = f(grid.top + (height - xLabelHeight));
                 let xLineLabelY = xLabelAlign === 'top' ? (xLabelHeight / 2) : height - (xLabelHeight / 2);
@@ -480,7 +527,7 @@ const Chart = (() => {
 
                         xLabelCtx.fillStyle = globalStyle.labelColor;
                         xLabelCtx.fillText(
-                            applyDateFormatter(timeline[i], dateFormatter),
+                            applyDateFormatter($timeline[i], dateFormatter),
                             f(xLineLabelX),
                             f(xLineLabelY)
                         );
@@ -508,7 +555,6 @@ const Chart = (() => {
 
                 let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
 
-
                 yLabelCtx.save();
                 yLabelCtx.clearRect(-10, -10, width + 10, height + 10);
                 yLabelCtx.translate(0, tHeight + grid.top);
@@ -516,7 +562,7 @@ const Chart = (() => {
                 // Ylabel Settings
                 yLabelCtx.textBaseline = "middle";
                 yLabelCtx.textAlign = yLabelAlign === 'left' ? 'right' : 'left';
-                yLabelCtx.font = "12px 'Apple SD Gothic Neo',arial,sans-serif";
+                yLabelCtx.font = `12px ${globalStyle.fontFamily}`;
 
                 let yLineX = f(yLabelAlign === 'left' ? yLabelWidth : width - yLabelWidth);
 
@@ -575,8 +621,10 @@ const Chart = (() => {
                 let width = wrapper.clientWidth,
                     height = wrapper.clientHeight;
 
-                if (viewport[0] === undefined || viewport[1] === undefined) {
-                    setViewport(0, timeline.length);
+                if ($timeline.length === 0) return;
+
+                if (isNaN(viewport[0]) === true || isNaN(viewport[1]) === true || viewport[0] === undefined || viewport[1] === undefined) {
+                    setViewport(0, $timeline.length);
                 }
 
                 // 레이어 타입에 따른 메소드를 가져온다.
@@ -627,14 +675,14 @@ const Chart = (() => {
             // 이벤트 리스너 등록
             // 줌 Zoom
             wrapper.addEventListener('mousewheel', e => {
+                e.preventDefault();
                 let velocity = (e.deltaY / 100) * -5;
                 let nextViewport = [viewport[0] + velocity, viewport[1]];
-
                 if (nextViewport[0] < 0) {
                     nextViewport[0] = 0;
                     nextViewport[1] -= velocity;
                 }
-                if (nextViewport[1] > timeline.length) nextViewport[1] = timeline.length;
+                if (nextViewport[1] > $timeline.length) nextViewport[1] = $timeline.length;
                 if (nextViewport[0] >= nextViewport[1]) nextViewport[0] = nextViewport[1] - 1;
 
                 setViewport(nextViewport[0], nextViewport[1]);
@@ -667,7 +715,7 @@ const Chart = (() => {
                         velocity = direction * 5,
                         nextViewport = [viewport[0] + velocity, viewport[1] + velocity];
 
-                    if (nextViewport[0] < 0 || nextViewport[1] > timeline.length) return;
+                    if (nextViewport[0] < 0 || nextViewport[1] > $timeline.length) return;
 
                     setViewport(nextViewport[0], nextViewport[1]);
                     prevMouseX = e.clientX;
@@ -681,13 +729,14 @@ const Chart = (() => {
                 });
             });
             wrapper.addEventListener('mouseout', e => {
-                floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
+                unfocusIndex();
             });
+
             let previousFocusedIndex;
-            const focusIndex = ({
-                x,
-                y
-            }) => {
+            const _focusIndex = ({
+                                     x,
+                                     y
+                                 }) => {
                 let {
                     tWidth,
                     tHeight,
@@ -722,10 +771,37 @@ const Chart = (() => {
                         (layer, name) => layer.data[index] === 'object' ? overwrite(null, layer.data[index]) : layer.data[index],
                         name => name
                     );
-                let time = new Date(timeline[index]);
+                let time = new Date($timeline[index]);
 
                 this.onSelect(time, datas);
                 showTooltip(index);
+            };
+            const focusIndex = pos => {
+                if (this.$rootConnect === null) {
+                    $methodByKey[$key]
+                        .dispatchFocusIndex(pos);
+                } else {
+                    $methodByKey[this.$rootConnect]
+                        .dispatchFocusIndex(pos);
+                    return;
+                }
+
+                _focusIndex(pos);
+            };
+
+            const _unfocusIndex = () => {
+                floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
+            };
+            const unfocusIndex = () => {
+                if (this.$rootConnect === null) {
+                    $methodByKey[$key]
+                        .dispatchUnfocusIndex();
+                } else {
+                    $methodByKey[this.$rootConnect]
+                        .dispatchUnfocusIndex();
+                    return;
+                }
+                _unfocusIndex();
             };
 
             let tooltipOptions = {
@@ -735,6 +811,7 @@ const Chart = (() => {
                 filters: [],
                 mainCandle: ''
             };
+
             const setTooltip = (options = {}) => {
                 tooltipOptions = overwrite(options, tooltipOptions);
                 reloadTooltip();
@@ -746,15 +823,15 @@ const Chart = (() => {
             const showTooltip =
                 (() => {
                     const render = ({
-                        ctx,
-                        texts,
-                        lineHeight,
-                        minWidth = globalStyle.tooltipMinWidth,
-                        notRender = false
-                    }) => {
+                                        ctx,
+                                        texts,
+                                        lineHeight,
+                                        minWidth = globalStyle.tooltipMinWidth,
+                                        notRender = false
+                                    }) => {
                         let lineCount = 1;
                         let lineWidth = 0;
-                        let space = 10;
+                        let space = globalStyle.tooltipLetterSpace;
                         let rendered = false;
                         let maxWidth = -Infinity;
 
@@ -826,12 +903,12 @@ const Chart = (() => {
                         if (show !== true) return;
 
                         let texts = [],
-                            fontSize = 13,
+                            fontSize = globalStyle.tooltipFontSize,
                             lineHeight = fontSize * 1.2;
                         // maxWidth = 300 (px)
                         ;
 
-                        tooltipCtx.font = `${fontSize}px 'Apple SD Gothic Neo', arial, sans-serif`;
+                        tooltipCtx.font = `${fontSize}px ${globalStyle.fontFamily}`;
                         tooltipCtx.textBaseline = "top";
 
                         layerMap((layer, name) => {
@@ -839,11 +916,11 @@ const Chart = (() => {
                                 return;
                             }
                             let text = tooltipForTypes[layer.type]
-                                ({
-                                    title: titles[name] || name,
-                                    formatter: formatters[name],
-                                    data: layer.data[index],
-                                });
+                            ({
+                                title: titles[name] || name,
+                                formatter: formatters[name],
+                                data: layer.data[index],
+                            });
 
                             if (text === null) return;
 
@@ -862,8 +939,9 @@ const Chart = (() => {
                                 lineHeight,
                                 notRender: b
                             });
-                        let pVertical = 10;
-                        let pHorizontal = 20;
+
+                        let pVertical = globalStyle.tooltipYPadding;
+                        let pHorizontal = globalStyle.tooltipXPadding;
 
                         let r = rTooltip(true),
                             rHeight = r.height + pVertical,
@@ -889,14 +967,15 @@ const Chart = (() => {
                         tooltipCtx.translate(grid.left, grid.top);
 
                         if (globalStyle.tooltipXAlign === 'left') {
-                            tooltipCtx.translate(5, 0);
+                            tooltipCtx.translate(globalStyle.tooltipXMargin, 0);
                         } else if (globalStyle.tooltipXAlign === 'right') {
-                            tooltipCtx.translate(tWidth - rWidth - 15, 0);
+                            tooltipCtx.translate(tWidth - rWidth - globalStyle.tooltipCandleThick - globalStyle.tooltipXMargin, 0);
                         }
+
                         if (globalStyle.tooltipYAlign === 'top') {
-                            tooltipCtx.translate(0, 5);
+                            tooltipCtx.translate(0, globalStyle.tooltipYMargin);
                         } else if (globalStyle.tooltipYAlign === 'bottom') {
-                            tooltipCtx.translate(0, tHeight - rHeight - 5);
+                            tooltipCtx.translate(0, tHeight - rHeight - globalStyle.tooltipYMargin);
                         }
 
                         // // 타이틀 그리기
@@ -926,16 +1005,16 @@ const Chart = (() => {
                             tooltipCtx.fillStyle = open < close ?
                                 style.incrementItemColor : style.decrementItemColor;
 
-                            tooltipCtx.fillRect(0, 0, 10, rHeight);
+                            tooltipCtx.fillRect(0, 0, globalStyle.tooltipCandleThick, rHeight);
                             tooltipCtx.globalAlpha = 1;
 
-                            tooltipCtx.translate(10, 0);
                         }
+                        tooltipCtx.translate(globalStyle.tooltipCandleThick, 0);
 
                         tooltipCtx.fillStyle = globalStyle.tooltipBackgroundColor;
                         tooltipCtx.fillRect(0.5, 0, rWidth, rHeight);
 
-                        tooltipCtx.translate(pHorizontal / 2, pVertical / 2);
+                        tooltipCtx.translate(pHorizontal / 2, pVertical / 2 + 1.2);
 
                         rTooltip();
 
@@ -968,9 +1047,9 @@ const Chart = (() => {
                 // 레이어 스타일 적용.
                 layerMap(
                     (layer, name) =>
-                    setLayer(name, {
-                        style: initLayerStyle[layer.type]
-                    })
+                        setLayer(name, {
+                            style: initLayerStyle[layer.type]
+                        })
                 );
 
                 renderXLabel();
@@ -987,7 +1066,105 @@ const Chart = (() => {
                 renderAll();
             };
 
+            const $connect = [];
+
+            const connect = b => {
+                if (b instanceof Chart !== true) return;
+
+                if (this.$rootConnect !== null) {
+                    $methodByKey[this.$rootConnect].connect(b);
+                    return;
+                }
+
+                // 레퍼런스공유로 메모리 낭비를 줄인다.
+                $setMethodByKey(b.$key, 'getTimeline', $getMethodByKey($key, 'getTimeline'));
+
+                // onSetViewport 함수 참조.
+
+                // 연결정보 추가
+                // 뷰포트 공유, 포커싱 공유는 connect 를 통해 이루어진다.
+                $connect.push(b.$key);
+                b.$rootConnect = $key;
+
+                renderAll();
+                b.render();
+            };
+
+            const disconnect = () => {
+                if (this.$rootConnect === null) {
+                    $connect.map(key => $methodByKey[key].disconnect());
+                    $connect.splice(0, $connect.length);
+                }
+                else {
+                    $methodByKey[$key].disconnect();
+                }
+                renderAll();
+            };
+
+            // private 함수 참조 가능.
+            $setMethodByKey($key, 'getTimeline', () => timeline);
+
+            $setMethodByKey($key, '_setViewport', _setViewport);
+            $setMethodByKey($key, 'dispatchSetViewport', (s, e) => {
+                if (this.$rootConnect === null) {
+
+                    _setViewport(s, e);
+
+                    $connect.map(key => {
+                        $methodByKey[key]._setViewport(s, e);
+                    });
+
+                }
+            });
+
+            $setMethodByKey($key, '_focusIndex', _focusIndex);
+            $setMethodByKey($key, 'dispatchFocusIndex', (s, e) => {
+                if (this.$rootConnect === null) {
+
+                    _focusIndex(s, e);
+
+                    $connect.map(key => {
+                        $methodByKey[key]._focusIndex(s, e);
+                    });
+
+                }
+            });
+
+            $setMethodByKey($key, '_unfocusIndex', _unfocusIndex);
+            $setMethodByKey($key, 'dispatchUnfocusIndex', (s, e) => {
+                if (this.$rootConnect === null) {
+
+                    _unfocusIndex(s, e);
+
+                    $connect.map(key => {
+                        $methodByKey[key]._unfocusIndex(s, e);
+                    });
+
+                }
+            });
+
+            $setMethodByKey($key, 'connect', () => connect);
+            $setMethodByKey($key, 'disconnect', () => {
+                $setMethodByKey($key, 'getTimeline', () => timeline);
+                this.$rootConnect = null;
+                renderAll();
+            });
+
+            // 이후 모든 setMethodByKey($key,...) 실행 후 $On 으로 등록한 함수를 실행한다.
+            $setMethodByKey($key, '$On', name => {
+                // getTimeline 함수가 변경되면, 실제제적인 차트 메소드들에 쓰이는 $timeline 변수를 교체한다.
+                if (name === 'getTimeline') {
+                    $timeline = $getMethodByKey($key, 'getTimeline')();
+                }
+            });
+
             /* return(define) public logics */
+            this.$key = $key;
+            this.$connect = $connect;
+            this.$rootConnect = null;
+
+            const publicFunctions = ['addLayer', 'setLayer', 'setViewport', 'getViewport', 'setTimeline', 'setPadding', 'setStyle', 'setTheme', 'resize', 'setDateFormatter', 'setTooltip', 'connect', 'disconnect'];
+
             this.addLayer = addLayer;
             this.setLayer = setLayer;
             this.setViewport = setViewport;
@@ -995,14 +1172,22 @@ const Chart = (() => {
             this.setTimeline = setTimeline;
             this.setPadding = setPadding;
             this.setStyle = setStyle;
-            this.render = () => renderAll();
             this.setTheme = setTheme;
             this.resize = resize;
-            this.onSelect = () => {};
+
             this.setDateFormatter = setDateFormatter;
             this.setTooltip = setTooltip;
+
+            this.connect = connect;
+            this.disconnect = disconnect;
+
+            this.render = renderAll;
+
+            this.onSelect = () => {
+            };
         }
     }
+
     Chart.addTheme = (name, th) => themes[name] = th;
     Chart.calculateMA = (dayCount, data) => {
         let result = [],
