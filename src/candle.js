@@ -13,14 +13,18 @@ const Chart = (() => {
             // yLabelAlign
             // : right
             // : left
-            yLabelAlign: "right",
+            yLabelAlign: "left",
             yLabelWidth: 100,
+            yLabelShow: true,
+            yAxisShow: true,
 
             // xLabelAlign
             // : top
             // : bottom
             xLabelAlign: "bottom",
             xLabelHeight: 30,
+            xLabelShow: true,
+            xAxisShow: true,
 
             textColor: '#fff',
             labelColor: '#5d5d5d',
@@ -40,8 +44,7 @@ const Chart = (() => {
             tooltipCandleThick: 10,
             tooltipLetterSpace: 10,
 
-            focusBackgroundColor: 'rgba(0, 175, 255, 0.1)',
-            focusBorderColor: 'rgba(0, 175, 255, 0.2)'
+            focusBackgroundColor: 'rgba(0, 175, 255, 0.2)',
         },
 
         layerType: 'candle', // candle , line
@@ -53,23 +56,27 @@ const Chart = (() => {
             },
             line: {
                 itemColor: '#000000'
+            },
+            stick: {
+                itemColor: '#000000'
             }
         },
 
         // 라벨속성에 따라 값이 맞춰진다.
         grid: {
             top: 0,
-            right: 100,
-            bottom: 30,
+            right: 0,
+            bottom: 0,
             left: 0
         },
 
         padding: {
-            top: 50,
+            top: 30,
             right: 0,
-            bottom: 50,
+            bottom: 30,
             left: 0
         },
+
         dateFormatter: "MM-dd HH:mm"
     };
     // theme 은 globalStyle layerStyle 을 지정 가능
@@ -92,6 +99,9 @@ const Chart = (() => {
             layerStyle: {
                 candle: {},
                 line: {
+                    itemColor: '#999'
+                },
+                stick: {
                     itemColor: '#999'
                 }
             }
@@ -156,6 +166,19 @@ const Chart = (() => {
             ctx.strokeStyle = style.itemColor;
             ctx.lineTo(f(itemWidth * 0.5), y);
         },
+        stick: ({
+                    ctx,
+                    itemWidth,
+                    transform,
+                    style
+                }, data) => {
+            if (data === null) return;
+
+            let y = transform(data);
+
+            ctx.fillStyle = style.itemColor;
+            ctx.fillRect(1, f(y), itemWidth - 2, f(-y));
+        }
     };
     const tooltipForTypes = {
         candle: ({
@@ -167,15 +190,18 @@ const Chart = (() => {
                    title,
                    data,
                    formatter = v => v,
-               }) => data === null ? null : `${title} ${formatter(data)}`
+               }) => data === null ? null : `${title} ${formatter(data)}`,
+        stick: item => item
     };
     const getMinForTypes = {
         candle: item => item.low,
-        line: item => item
+        line: item => item,
+        stick: item => item
     };
     const getMaxForTypes = {
         candle: item => item.high,
-        line: item => item
+        line: item => item,
+        stick: item => item
     };
 
     // 유틸 메소드
@@ -289,12 +315,11 @@ const Chart = (() => {
             let timeline = [];
             let $timeline = [];
 
-            let {
-                grid,
-                padding,
-                globalStyle,
-                dateFormatter
-            } = init;
+            let grid = overwrite(null, init.grid),
+                padding = overwrite(null, init.padding),
+                globalStyle = overwrite(null, init.globalStyle),
+                dateFormatter = init.dateFormatter;
+
             let min;
             let max;
 
@@ -306,7 +331,7 @@ const Chart = (() => {
             const yLabelCtx = makeCanvas().context;
             const xLabelCtx = makeCanvas().context;
 
-            const floatCtx = makeCanvas().context;
+            const floatCtx = makeCanvas(1).context;
             const tooltipCtx = makeCanvas(10000).context;
 
             // 레이어 메소드
@@ -352,13 +377,12 @@ const Chart = (() => {
                 reloadTooltip();
             };
             const layerMap = (func, formatter) => {
-                let lKeys = Object.keys(layers);
                 let rObj = [];
 
-                for (let i = 0; i < lKeys.length; i++) {
-                    let key = lKeys[i],
-                        r = func(layers[key], key);
-                    if (formatter) rObj[formatter(key)] = r;
+                for (let name in layers) {
+                    let r = func(layers[name], name);
+
+                    if (formatter) rObj[formatter(name)] = r;
                     else rObj.push(r);
                 }
 
@@ -410,20 +434,30 @@ const Chart = (() => {
             // 패딩 메소드
             const setPadding = pPadding => {
                 padding = overwrite(pPadding, padding);
-                layerMap(layer => render(layer));
+
+                for (let name in layers) {
+                    let layer = layers[name];
+                    render(layer);
+                }
             };
 
             // 스타일 메소드
             const setStyle = pStyle => {
                 globalStyle = overwrite(pStyle, globalStyle);
-
-                grid.top = globalStyle.xLabelAlign === 'top' ? globalStyle.xLabelHeight : 0;
-                grid.bottom = globalStyle.xLabelAlign === 'bottom' ? globalStyle.xLabelHeight : 0;
-
-                grid.left = globalStyle.yLabelAlign === 'left' ? globalStyle.yLabelWidth : 0;
-                grid.right = globalStyle.yLabelAlign === 'right' ? globalStyle.yLabelWidth : 0;
-
+                setGrid();
                 renderAll();
+            };
+
+            const setGrid = () => {
+                let xs = globalStyle.xLabelShow === false ? 0 : 1,
+                    ys = globalStyle.yLabelShow === false ? 0 : 1;
+
+                grid.top = globalStyle.xLabelAlign === 'top' ? globalStyle.xLabelHeight * xs : 0;
+                grid.bottom = globalStyle.xLabelAlign === 'bottom' ? globalStyle.xLabelHeight * xs : 0;
+
+                grid.left = globalStyle.yLabelAlign === 'left' ? globalStyle.yLabelWidth * ys : 0;
+                grid.right = globalStyle.yLabelAlign === 'right' ? globalStyle.yLabelWidth * ys : 0;
+
             };
 
             const getTransformSize = () => ({
@@ -474,7 +508,10 @@ const Chart = (() => {
                 let {
                     xLabelHeight,
                     xLabelAlign,
+                    xLabelShow,
+                    xAxisShow
                 } = globalStyle;
+
 
                 let width = wrapper.clientWidth,
                     height = wrapper.clientHeight;
@@ -482,13 +519,14 @@ const Chart = (() => {
                 // Transform Size
                 let {
                     tWidth,
-                    tHeight,
+                    tHeight
                 } = getTransformSize();
 
                 let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
 
                 xLabelCtx.save();
                 xLabelCtx.clearRect(-10, -10, width + 10, height + 10);
+
                 xLabelCtx.translate(grid.left, 0);
 
                 // Xlabel Settings
@@ -496,41 +534,48 @@ const Chart = (() => {
                 xLabelCtx.textAlign = "left";
                 xLabelCtx.font = `12px ${globalStyle.fontFamily}`;
 
-                let xLineY = f(grid.top + (height - xLabelHeight));
+                let xLineY = tHeight;
                 let xLineLabelY = xLabelAlign === 'top' ? (xLabelHeight / 2) : height - (xLabelHeight / 2);
                 let xAxisY = xLabelAlign === 'bottom' ? xLineY : grid.top;
 
-                xLabelCtx.strokeStyle = globalStyle.axisColor;
-                xLabelCtx.beginPath();
-                xLabelCtx.moveTo(0, xAxisY);
-                xLabelCtx.lineTo(tWidth, xAxisY);
-                xLabelCtx.closePath();
-                xLabelCtx.stroke();
+                if (xLabelShow !== false) {
+                    xLabelCtx.strokeStyle = globalStyle.axisColor;
+                    xLabelCtx.beginPath();
+                    xLabelCtx.moveTo(0, xAxisY);
+                    xLabelCtx.lineTo(tWidth, xAxisY);
+                    xLabelCtx.closePath();
+                    xLabelCtx.stroke();
+                }
+
+                xLabelCtx.fillStyle = globalStyle.labelColor;
 
                 for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
                     if (viewport[0] - l === -1 || (l - i) % s === 0) {
                         let xLineLabelX = f(itemWidth * 0.5);
 
-                        xLabelCtx.strokeStyle = globalStyle.axisColor;
-                        xLabelCtx.beginPath();
-                        xLabelCtx.moveTo(xLineLabelX, xAxisY + (xLabelAlign === 'bottom' ? 5 : -5));
-                        xLabelCtx.lineTo(xLineLabelX, xAxisY);
-                        xLabelCtx.closePath();
-                        xLabelCtx.stroke();
+                        if (xAxisShow !== false) {
+                            xLabelCtx.strokeStyle = globalStyle.splitAxisColor;
+                            xLabelCtx.beginPath();
+                            xLabelCtx.moveTo(xLineLabelX, grid.top);
+                            xLabelCtx.lineTo(xLineLabelX, xLineY + grid.top);
+                            xLabelCtx.closePath();
+                            xLabelCtx.stroke();
+                        }
 
-                        xLabelCtx.strokeStyle = globalStyle.splitAxisColor;
-                        xLabelCtx.beginPath();
-                        xLabelCtx.moveTo(xLineLabelX, grid.top);
-                        xLabelCtx.lineTo(xLineLabelX, xLineY);
-                        xLabelCtx.closePath();
-                        xLabelCtx.stroke();
+                        if (xLabelShow !== false) {
+                            xLabelCtx.strokeStyle = globalStyle.axisColor;
+                            xLabelCtx.beginPath();
+                            xLabelCtx.moveTo(xLineLabelX, xAxisY + (xLabelAlign === 'bottom' ? 5 : -5));
+                            xLabelCtx.lineTo(xLineLabelX, xAxisY);
+                            xLabelCtx.closePath();
+                            xLabelCtx.stroke();
 
-                        xLabelCtx.fillStyle = globalStyle.labelColor;
-                        xLabelCtx.fillText(
-                            applyDateFormatter($timeline[i], dateFormatter),
-                            f(xLineLabelX),
-                            f(xLineLabelY)
-                        );
+                            xLabelCtx.fillText(
+                                applyDateFormatter($timeline[i], dateFormatter),
+                                f(xLineLabelX),
+                                f(xLineLabelY)
+                            );
+                        }
                     }
                     xLabelCtx.translate(itemWidth, 0);
                 }
@@ -541,8 +586,11 @@ const Chart = (() => {
             const renderYLabel = () => {
                 let {
                     yLabelWidth,
-                    yLabelAlign
+                    yLabelAlign,
+                    yLabelShow,
+                    yAxisShow
                 } = globalStyle;
+
 
                 let width = wrapper.clientWidth,
                     height = wrapper.clientHeight;
@@ -550,13 +598,12 @@ const Chart = (() => {
                 // Transform Size
                 let {
                     tWidth,
-                    tHeight,
+                    tHeight
                 } = getTransformSize();
-
-                let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
 
                 yLabelCtx.save();
                 yLabelCtx.clearRect(-10, -10, width + 10, height + 10);
+
                 yLabelCtx.translate(0, tHeight + grid.top);
 
                 // Ylabel Settings
@@ -566,14 +613,16 @@ const Chart = (() => {
 
                 let yLineX = f(yLabelAlign === 'left' ? yLabelWidth : width - yLabelWidth);
 
-                yLabelCtx.beginPath();
 
                 yLabelCtx.strokeStyle = globalStyle.axisColor;
 
-                yLabelCtx.moveTo(yLineX, 0);
-                yLabelCtx.lineTo(yLineX, -tHeight);
-                yLabelCtx.closePath();
-                yLabelCtx.stroke();
+                if (yLabelShow !== false) {
+                    yLabelCtx.beginPath();
+                    yLabelCtx.moveTo(yLineX, 0);
+                    yLabelCtx.lineTo(yLineX, -tHeight);
+                    yLabelCtx.closePath();
+                    yLabelCtx.stroke();
+                }
 
                 let split = 10;
                 let temp = (max - min) / split;
@@ -595,102 +644,126 @@ const Chart = (() => {
 
                     let y = -map(d, min, max, 0, tHeight);
 
-                    yLabelCtx.fillText(d.toString(), yLineX + (yLabelAlign === 'right' ? 5 : -5), y);
+                    if (yLabelShow !== false) {
+                        yLabelCtx.fillText(d.toString(), yLineX + (yLabelAlign === 'right' ? 10 : -10), y);
 
-                    yLabelCtx.strokeStyle = globalStyle.splitAxisColor;
-                    yLabelCtx.beginPath();
-                    yLabelCtx.moveTo(grid.left, y);
-                    yLabelCtx.lineTo(yLineX - 1, y);
-                    yLabelCtx.closePath();
-                    yLabelCtx.stroke();
+                        yLabelCtx.strokeStyle = globalStyle.labelColor;
+                        yLabelCtx.beginPath();
+                        yLabelCtx.moveTo(yLineX, y);
+                        yLabelCtx.lineTo(yLineX + (yLabelAlign === 'right' ? 5 : -5), y);
+                        yLabelCtx.closePath();
+                        yLabelCtx.stroke();
+                    }
+                    if (yAxisShow !== false) {
+                        yLabelCtx.strokeStyle = globalStyle.splitAxisColor;
+                        yLabelCtx.beginPath();
+                        yLabelCtx.moveTo(grid.left, y);
+                        yLabelCtx.lineTo(tWidth + grid.left - 1, y);
+                        yLabelCtx.closePath();
+                        yLabelCtx.stroke();
+                    }
                 }
 
                 yLabelCtx.restore();
             };
 
             // 출력 메소드
-            const render = layer => {
-                let {
-                    data,
-                    type,
-                    context,
-                    canvas,
-                    style
-                } = layer;
-
-                let width = wrapper.clientWidth,
-                    height = wrapper.clientHeight;
-
-                if ($timeline.length === 0) return;
-
-                if (isNaN(viewport[0]) === true || isNaN(viewport[1]) === true || viewport[0] === undefined || viewport[1] === undefined) {
-                    setViewport(0, $timeline.length);
-                }
-
-                // 레이어 타입에 따른 메소드를 가져온다.
-                let renderItem = renderForTypes[type];
-
-                // Transform Size
-                let {
-                    tWidth,
-                    tHeight,
-                } = getTransformSize();
-
-                let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
-
-                context.save();
-
-                // Clear
-                context.clearRect(-10, -10, width + 10, height + 10);
-
-                // Translate
-                context.translate(grid.left, tHeight + grid.top);
-
-                context.beginPath();
-
-                for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
-                    renderItem({
-                        ctx: context,
-                        itemWidth,
-                        transform: v => -map(v, min, max, padding.top, tHeight - padding.bottom),
+            const
+                render = layer => {
+                    let {
+                        data,
+                        type,
+                        context,
+                        canvas,
                         style
-                    }, data[i]);
-                    context.translate(itemWidth, 0);
-                }
-                context.stroke();
-                context.closePath();
+                    } = layer;
 
-                context.restore();
-            };
+                    let width = wrapper.clientWidth,
+                        height = wrapper.clientHeight;
 
-            const renderAll = () => {
-                layerMap(layer => render(layer));
+                    if ($timeline.length === 0) return;
 
-                renderXLabel();
-                renderYLabel();
+                    if (isNaN(viewport[0]) === true || isNaN(viewport[1]) === true || viewport[0] === undefined || viewport[1] === undefined) {
+                        setViewport(0, $timeline.length);
+                    }
 
-                reloadTooltip();
-            };
+                    // 레이어 타입에 따른 메소드를 가져온다.
+                    let renderItem = renderForTypes[type];
+
+                    // Transform Size
+                    let {
+                        tWidth,
+                        tHeight,
+                    } = getTransformSize();
+
+                    let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
+
+                    context.save();
+
+                    // Clear
+                    context.clearRect(-10, -10, width + 10, height + 10);
+
+                    // Translate
+                    context.translate(grid.left, tHeight + grid.top);
+
+                    context.beginPath();
+
+                    let transform = v => -map(v, min, max, padding.bottom, tHeight - padding.top);
+
+                    for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
+                        renderItem({
+                            ctx: context,
+                            itemWidth,
+                            transform,
+                            style
+                        }, data[i]);
+                        context.translate(itemWidth, 0);
+                    }
+                    context.stroke();
+                    context.closePath();
+
+                    context.restore();
+                };
+
+            const
+                renderAll = () => {
+                    for (let name in layers) {
+                        let layer = layers[name];
+                        render(layer);
+                    }
+
+                    renderXLabel();
+                    renderYLabel();
+
+                    reloadTooltip();
+                };
 
             // 이벤트 리스너 등록
             // 줌 Zoom
-            wrapper.addEventListener('mousewheel', e => {
-                e.preventDefault();
-                let velocity = (e.deltaY / 100) * -5;
-                let nextViewport = [viewport[0] + velocity, viewport[1]];
-                if (nextViewport[0] < 0) {
-                    nextViewport[0] = 0;
-                    nextViewport[1] -= velocity;
-                }
-                if (nextViewport[1] > $timeline.length) nextViewport[1] = $timeline.length;
-                if (nextViewport[0] >= nextViewport[1]) nextViewport[0] = nextViewport[1] - 1;
+            wrapper.addEventListener('mousewheel',
+                e => {
+                    e.preventDefault();
 
-                setViewport(nextViewport[0], nextViewport[1]);
-                focusIndex({
-                    x: e.layerX,
-                    y: e.layerY
-                });
-            });
+                    // speed : 10
+                    let zoomSpeed = 10;
+
+                    let velocity = (e.deltaY / 100) * -zoomSpeed;
+                    let nextViewport = [viewport[0] + velocity, viewport[1]];
+
+                    if (nextViewport[0] < 0) {
+                        nextViewport[0] = 0;
+                        nextViewport[1] -= velocity;
+                    }
+                    if (nextViewport[1] > $timeline.length) nextViewport[1] = $timeline.length;
+                    if (nextViewport[0] >= nextViewport[1]) nextViewport[0] = nextViewport[1] - 1;
+
+                    setViewport(nextViewport[0], nextViewport[1]);
+                    focusIndex({
+                        x: e.layerX,
+                        y: e.layerY
+                    });
+                })
+            ;
             // 드래그 Drag
             let mousedown = false;
             let prevMouseX = null;
@@ -707,12 +780,14 @@ const Chart = (() => {
             });
             window.addEventListener('mousemove', e => {
                 let delta = prevMouseX - e.clientX;
-                // 이동값이 10px 이상일 경우, 좌 또는 우로 데이터 1개만큼 뷰포트 이동. (speed = 5)
+                // 이동값이 10px 이상일 경우, 좌 또는 우로 데이터 1개만큼 뷰포트 이동.
                 if (mousedown === true && prevMouseX !== null && Math.abs(delta) >= 10) {
                     e.preventDefault();
+                    // speed : 5
+                    let moveSpeed = 5;
 
                     let direction = delta < 0 ? -1 : 1,
-                        velocity = direction * 5,
+                        velocity = direction * moveSpeed,
                         nextViewport = [viewport[0] + velocity, viewport[1] + velocity];
 
                     if (nextViewport[0] < 0 || nextViewport[1] > $timeline.length) return;
@@ -743,7 +818,7 @@ const Chart = (() => {
                 } = getTransformSize();
 
                 let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
-                let screenIndex = Math.floor(x / itemWidth);
+                let screenIndex = Math.floor((x - grid.left) / itemWidth);
                 let index = viewport[0] + screenIndex;
 
                 if (previousFocusedIndex === index) {
@@ -757,12 +832,30 @@ const Chart = (() => {
                 floatCtx.save();
 
                 floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
+                floatCtx.translate(grid.left, 0);
 
+                /* x focus */
                 floatCtx.fillStyle = globalStyle.focusBackgroundColor;
                 floatCtx.strokeStyle = globalStyle.focusBorderColor;
 
                 floatCtx.fillRect(screenIndex * itemWidth, grid.top, itemWidth, tHeight);
-                floatCtx.strokeRect(screenIndex * itemWidth, grid.top, itemWidth, tHeight);
+
+                /* y focus */
+                if (grid.top + tHeight >= y && grid.top <= y) {
+
+                    floatCtx.strokeStyle = '#aaa';
+
+                    floatCtx.beginPath();
+                    floatCtx.moveTo(0, y);
+                    floatCtx.lineTo(tWidth, y);
+                    floatCtx.closePath();
+                    floatCtx.stroke();
+
+                    if(globalStyle.yLabelAlign === 'left'){}
+                    
+                    floatCtx.fillRect(-grid.left, y-10,)
+
+                }
 
                 floatCtx.restore();
 
@@ -835,7 +928,7 @@ const Chart = (() => {
                         let rendered = false;
                         let maxWidth = -Infinity;
 
-                        texts.map(
+                        texts.forEach(
                             text => {
                                 let width;
 
@@ -911,10 +1004,11 @@ const Chart = (() => {
                         tooltipCtx.font = `${fontSize}px ${globalStyle.fontFamily}`;
                         tooltipCtx.textBaseline = "top";
 
-                        layerMap((layer, name) => {
+                        for (let name in layers) {
                             if (filters.indexOf(name) !== -1) {
                                 return;
                             }
+                            let layer = layers[name];
                             let text = tooltipForTypes[layer.type]
                             ({
                                 title: titles[name] || name,
@@ -928,7 +1022,7 @@ const Chart = (() => {
                                 text,
                                 color: layer.style.itemColor || globalStyle.textColor
                             });
-                        });
+                        }
 
                         tooltipCtx.save();
 
@@ -1025,8 +1119,9 @@ const Chart = (() => {
                 })();
 
             const updateInitLayerStyle = () => {
-                initLayerStyle.candle = overwrite(theme.layerStyle.candle, init.layerStyle.candle);
-                initLayerStyle.line = overwrite(theme.layerStyle.line, init.layerStyle.line);
+                for (let type in init.layerStyle) {
+                    initLayerStyle[type] = overwrite(theme.layerStyle[type], init.layerStyle[type]);
+                }
             };
             const updateWrapperStyle = () => {
                 // wrapperStyle 은 개념적으로는 globalStyle 이지만 다른 globalStyle 속성들과는 다르게 렌더링 도중에 값이 업데이트 되지않음.
@@ -1045,17 +1140,16 @@ const Chart = (() => {
                 updateInitLayerStyle();
 
                 // 레이어 스타일 적용.
-                layerMap(
-                    (layer, name) =>
-                        setLayer(name, {
-                            style: initLayerStyle[layer.type]
-                        })
-                );
+                for (let name in layers) {
+                    let layer = layers[name];
+                    setLayer(name, {
+                        style: initLayerStyle[layer.type]
+                    });
+                }
 
                 renderXLabel();
                 renderYLabel();
             };
-            setTheme("gray");
 
             const resize = () => {
                 // 모든 canvas 의 크기를 wrapper에 맞춤.
@@ -1164,27 +1258,36 @@ const Chart = (() => {
             this.$rootConnect = null;
 
             const publicFunctions = ['addLayer', 'setLayer', 'setViewport', 'getViewport', 'setTimeline', 'setPadding', 'setStyle', 'setTheme', 'resize', 'setDateFormatter', 'setTooltip', 'connect', 'disconnect'];
+            for (let i = 0, l = publicFunctions.length; i < l; i++) {
+                eval(`this.${publicFunctions[i]} = (...argv) => { ${publicFunctions[i]}.apply(this, argv); return this; }`);
+            }
 
-            this.addLayer = addLayer;
-            this.setLayer = setLayer;
-            this.setViewport = setViewport;
-            this.getViewport = getViewport;
-            this.setTimeline = setTimeline;
-            this.setPadding = setPadding;
-            this.setStyle = setStyle;
-            this.setTheme = setTheme;
-            this.resize = resize;
+            // this.addLayer = addLayer;
+            // this.setLayer = setLayer;
+            // this.setViewport = setViewport;
+            // this.getViewport = getViewport;
+            // this.setTimeline = setTimeline;
+            // this.setPadding = setPadding;
+            // this.setStyle = setStyle;
+            // this.setTheme = setTheme;
+            // this.resize = resize;
+            //
+            // this.setDateFormatter = setDateFormatter;
+            // this.setTooltip = setTooltip;
+            //
+            // this.connect = connect;
+            // this.disconnect = disconnect;
 
-            this.setDateFormatter = setDateFormatter;
-            this.setTooltip = setTooltip;
-
-            this.connect = connect;
-            this.disconnect = disconnect;
-
-            this.render = renderAll;
+            this.render = () => {
+                renderAll();
+                return this;
+            };
 
             this.onSelect = () => {
             };
+
+            setGrid();
+            setTheme("gray");
         }
     }
 
@@ -1208,4 +1311,5 @@ const Chart = (() => {
     };
 
     return Chart;
-})();
+})
+();

@@ -50,91 +50,87 @@
     /* main chart settings */
     const mainChart = new Chart('main-board');
 
-    mainChart.setTheme('dark');
-    mainChart.setTimeline(data.map(item => item.CreateTime));
-
-    mainChart.addLayer('candle', {
-        type: 'candle',
-        data: data.map(item => ({
-            open: item.OpenPrice,
-            close: item.ClosePrice,
-            high: item.HighPrice,
-            low: item.LowPrice
-        }))
-    });
-
-    mainChart.addLayer('ma10', {
-        type: 'line',
-        data: Chart.calculateMA(10, data.map(item => item.ClosePrice)),
-        style: {
-            itemColor: "orange"
-        }
-    });
-
-    mainChart.addLayer('ma30', {
-        type: 'line',
-        data: Chart.calculateMA(30, data.map(item => item.ClosePrice)),
-        style: {
-            itemColor: "skyblue"
-        }
-    });
-
-    mainChart.setTooltip({
-        show: true,
-        mainCandle: 'candle',
-        titles: {
-            candle: {
-                open: 'Open',
-                close: 'Close',
-                low: 'Low',
-                high: 'High'
+    mainChart
+        .setTheme('dark')
+        .setTimeline(data.map(item => item.CreateTime))
+//        .setStyle({xLabelShow: false})
+        .addLayer('candle', {
+            type: 'candle',
+            data: data.map(item => ({
+                open: item.OpenPrice,
+                close: item.ClosePrice,
+                high: item.HighPrice,
+                low: item.LowPrice
+            }))
+        })
+        .addLayer('ma10', {
+            type: 'line',
+            data: Chart.calculateMA(10, data.map(item => item.ClosePrice)),
+            style: {
+                itemColor: "orange"
+            }
+        })
+        .addLayer('ma30', {
+            type: 'line',
+            data: Chart.calculateMA(30, data.map(item => item.ClosePrice)),
+            style: {
+                itemColor: "skyblue"
+            }
+        })
+        .setTooltip({
+            show: true,
+            mainCandle: 'candle',
+            titles: {
+                candle: {
+                    open: 'Open',
+                    close: 'Close',
+                    low: 'Low',
+                    high: 'High'
+                },
+                ma10: 'Ma10',
+                ma30: 'Ma30',
             },
-            ma10: 'Ma10',
-            ma30: 'Ma30',
-        },
-        formatters: {
-            ma10: v => v && Math.floor(v),
-            ma30: v => v && Math.floor(v)
-        },
-    });
+            formatters: {
+                ma10: v => v && Math.floor(v),
+                ma30: v => v && Math.floor(v)
+            },
+        });
 
     /* sub A chart settings */
     const subAChart = new Chart('sub-A-board');
-    subAChart.setTheme('dark');
-
-    subAChart.setStyle({
-        tooltipYAlign: 'bottom'
-    });
-    subAChart.setPadding({
-        top: 10,
-        bottom: 10
-    });
-
-    subAChart.addLayer('ma10', {
-        type: 'line',
-        data: Chart.calculateMA(10, data.map(item => item.ClosePrice)),
-        style: {
-            itemColor: "orange"
-        }
-    });
-    subAChart.addLayer('ma5', {
-        type: 'line',
-        data: Chart.calculateMA(30, data.map(item => item.ClosePrice)),
-        style: {
-            itemColor: "skyblue"
-        }
-    });
-    subAChart.setTooltip({
-        show: true,
-        titles: {
-            ma10: 'Ma10',
-            ma5: 'Ma5',
-        },
-        formatters: {
-            ma10: v => v && Math.floor(v),
-            ma5: v => v && Math.floor(v)
-        },
-    });
+    subAChart
+        .setTheme('dark')
+        .setStyle({
+        })
+        .setPadding({
+            top: 10,
+            bottom: 10
+        })
+        .addLayer('ma10', {
+            type: 'stick',
+            data: Chart.calculateMA(10, data.map(item => item.ClosePrice)),
+            style: {
+                itemColor: "orange"
+            }
+        })
+        .addLayer('ma5', {
+            type: 'stick',
+            data: Chart.calculateMA(30, data.map(item => item.ClosePrice)),
+            style: {
+                itemColor: "skyblue"
+            }
+        })
+        .setTooltip({
+            show: true,
+            titles: {
+                ma10: 'Ma10',
+                ma5: 'Ma5',
+            },
+            formatters: {
+                ma10: v => v && Math.floor(v),
+                ma5: v => v && Math.floor(v)
+            },
+        });
 
     /* sub B chart settings */
     const subBChart = new Chart('sub-B-board');
@@ -142,23 +138,22 @@
     subBChart.setPadding({
         top: 10,
         bottom: 10
-    });
-    subBChart.setTheme('dark');
-
-    subBChart.addLayer('ma10', {
-        type: 'line',
-        data: Chart.calculateMA(10, data.map(item => item.ClosePrice)).reverse(),
-        style: {
-            itemColor: "orange"
-        }
-    });
-    subBChart.addLayer('ma5', {
-        type: 'line',
-        data: Chart.calculateMA(30, data.map(item => item.ClosePrice)).reverse(),
-        style: {
-            itemColor: "skyblue"
-        }
-    });
+    })
+        .setTheme('dark')
+        .addLayer('ma10', {
+            type: 'line',
+            data: Chart.calculateMA(10, data.map(item => item.ClosePrice)).reverse(),
+            style: {
+                itemColor: "orange"
+            }
+        })
+        .addLayer('ma5', {
+            type: 'line',
+            data: Chart.calculateMA(30, data.map(item => item.ClosePrice)).reverse(),
+            style: {
+                itemColor: "skyblue"
+            }
+        });
 
     //  subAChart.setTimeline(data.map(item => item.CreateTime).reverse());
     //  subBChart.setTimeline(data.map(item => item.CreateTime).reverse());
