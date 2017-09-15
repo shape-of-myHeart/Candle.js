@@ -229,10 +229,7 @@ const Chart = (() => {
     const overwrite = (target, base) => {
         if (typeof target !== 'object' || target === null) target = {};
 
-        let bKeys = Object.keys(base);
-
-        for (let i = 0, l = bKeys.length; i < l; i++) {
-            let key = bKeys[i];
+        for (let key in base) {
             if (target[key] === undefined) target[key] = base[key];
         }
 
@@ -468,8 +465,10 @@ const Chart = (() => {
             // 스타일 메소드
             const setStyle = pStyle => {
                 globalStyle = overwrite(pStyle, globalStyle);
+
                 setGrid();
                 renderAll();
+                console.log(globalStyle.xLabelAlign)
             };
 
             const setGrid = () => {
@@ -481,13 +480,13 @@ const Chart = (() => {
 
                 grid.left = globalStyle.yLabelAlign === 'left' ? globalStyle.yLabelWidth * ys : 0;
                 grid.right = globalStyle.yLabelAlign === 'right' ? globalStyle.yLabelWidth * ys : 0;
-
             };
 
             const getTransformSize = () => ({
                 tWidth: wrapper.clientWidth - grid.right - grid.left,
                 tHeight: wrapper.clientHeight - grid.bottom - grid.top,
             });
+
             const updateMinMax = () => {
                 let arr = layerMap(layer => {
                     let {
@@ -555,7 +554,7 @@ const Chart = (() => {
 
                 // Xlabel Settings
                 xLabelCtx.textBaseline = "middle";
-                xLabelCtx.textAlign = globalStyle.yLabelAlign;
+                xLabelCtx.textAlign = globalStyle.yLabelAlign === 'left' ? 'right' : 'left';
                 xLabelCtx.font = `12px ${globalStyle.fontFamily}`;
 
                 let xLineY = tHeight;
@@ -652,10 +651,14 @@ const Chart = (() => {
                 let split = 5;
                 let increase = (max - min) / split;
 
-                let _increase = 10;
+                let _increase = 1000;
+                increase -= increase % _increase;
+                increase = f(increase);
 
-                for (let i = 0; i < split; i++) {
-                    let d = min + increase * i;
+                let base = f(min - min % increase);
+
+                for (let i = 0; i <= split; i++) {
+                    let d = base + increase * i;
 
                     if (d > max) break;
                     else if (d < min) continue;
@@ -895,7 +898,7 @@ const Chart = (() => {
                             gy = grid.bottom;
                         }
 
-                        if (globalStyle.yLabelAlign === 'left') {
+                        if (globalStyle.yLabelAlign === 'right') {
 
                         } else {
                             tx -= textWidth + paddingLR * 2 - itemWidth;
@@ -1237,6 +1240,9 @@ const Chart = (() => {
                         style: initLayerStyle[layer.type]
                     });
                 }
+
+                // 그리드 업데이트
+                setGrid();
 
                 renderXLabel();
                 renderYLabel();
