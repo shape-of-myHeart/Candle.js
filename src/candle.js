@@ -197,27 +197,38 @@ const Chart = (() => {
             if (data === null) return;
 
             let y = transform(data);
+            let g = 1;
+            if (f(itemWidth) <= 3) {
+                ctx.strokeStyle = itemColor;
+                ctx.beginPath();
+                ctx.moveTo(f(itemWidth * 0.5), f(y));
+                ctx.lineTo(f(itemWidth * 0.5), 0);
+                ctx.closePath();
+                ctx.stroke();
+            }
+            else {
+                ctx.fillStyle = itemColor;
+                ctx.fillRect(f(g), f(y), f(itemWidth - g * 2), f(-y));
+            }
 
-            ctx.fillStyle = itemColor;
-            ctx.fillRect(1, f(y), itemWidth - 2, f(-y));
         }
     };
     const tooltipForTypes = {
         candle: ({
                      title,
                      data,
-                     formatter = v => v
-                 }) => data === null ? null : [`${title.open || 'Open'} ${formatter(data.open)}`, `${title.close || 'Close'} ${formatter(data.close)}`, `${title.low || 'Low'} ${formatter(data.low)}`, `${title.high || 'High'} ${formatter(data.high)}`],
+                     formatter = df
+                 }) => data === null || data === undefined ? null : [`${title.open || 'Open'} ${formatter(data.open)}`, `${title.close || 'Close'} ${formatter(data.close)}`, `${title.low || 'Low'} ${formatter(data.low)}`, `${title.high || 'High'} ${formatter(data.high)}`],
         line: ({
                    title,
                    data,
-                   formatter = v => v,
-               }) => data === null ? null : `${title} ${formatter(data)}`,
+                   formatter = df,
+               }) => data === null || data === undefined ? null : `${title} ${formatter(data)}`,
         stick: ({
                     title,
                     data,
-                    formatter = v => v,
-                }) => data === null ? null : `${title} ${formatter(data)}`,
+                    formatter = df,
+                }) => data === null || data === undefined ? null : `${title} ${formatter(data)}`,
     };
     const getMinForTypes = {
         candle: item => item.low,
@@ -231,6 +242,7 @@ const Chart = (() => {
     };
 
     // 유틸 메소드
+    const df = v => v;
     const map = (n, a, b, c, d) => ((n - a) / (b - a)) * (d - c) + c;
     const f = Math.floor;
     const overwrite = (target, base) => {
@@ -355,7 +367,7 @@ const Chart = (() => {
             const xLabelCtx = makeCanvas().context;
 
             const floatCtx = makeCanvas(1).context;
-            const tooltipCtx = makeCanvas(10000).context;
+            const tooltipCtx = makeCanvas(2).context;
 
             // 레이어 메소드
             const addLayer = (name, {
@@ -374,7 +386,6 @@ const Chart = (() => {
 
                 layers[name] = layer;
 
-                updateMinMax();
                 renderAll();
             };
             const setLayer = (name, {
@@ -393,8 +404,6 @@ const Chart = (() => {
                 layer.type = type || layer.type;
                 layer.data = data || layer.data;
                 layer.style = overwrite(style, baseStyle);
-
-                updateMinMax();
 
                 renderAll();
                 reloadTooltip();
@@ -423,7 +432,6 @@ const Chart = (() => {
                 viewport[0] = min;
                 viewport[1] = max;
 
-                updateMinMax();
                 renderAll();
             };
 
@@ -431,7 +439,7 @@ const Chart = (() => {
             const setViewport = (s, e) => {
                 if (s < 0 || e < 0 || (viewport[0] === s && viewport[1] === e)) return;
 
-                if (this.$rootConnect === null) {
+                if (isRoot()) {
                     $methodByKey[$key]
                         .dispatchSetViewport(s, e);
                 } else {
@@ -446,12 +454,18 @@ const Chart = (() => {
             // 타임라인 메소드
             const setTimeline = pTimeline => {
                 timeline = [];
+
                 for (let i = 0, l = pTimeline.length; i < l; i++) {
                     timeline.push(new Date(pTimeline[i]));
                 }
                 $timeline = timeline;
 
                 renderAll();
+
+                if (isRoot() === true) {
+                    $methodByKey[$key]
+                        .dispatchSetTimeline();
+                }
             };
 
             const setDateFormatter = f => {
@@ -506,7 +520,7 @@ const Chart = (() => {
                         max = -Infinity;
 
                     for (let i = viewport[0], l = viewport[1]; i < l; i++) {
-                        if (data[i] === null) continue;
+                        if (data[i] === null || data[i] === undefined) continue;
 
                         let _min = getMin(data[i]);
                         let _max = getMax(data[i]);
@@ -541,6 +555,7 @@ const Chart = (() => {
                     xAxisShow
                 } = globalStyle;
 
+                if ($timeline.length === 0) return;
 
                 let width = wrapper.clientWidth,
                     height = wrapper.clientHeight;
@@ -660,7 +675,7 @@ const Chart = (() => {
                 let increase = (max - min) / split;
 
                 let _increase = 1;
-                while (increase > 10 * _increase){
+                while (increase > 10 * _increase) {
                     _increase *= 10;
                 }
                 increase -= increase % _increase;
@@ -746,17 +761,18 @@ const Chart = (() => {
                     let transform = v => -map(v, min, max, padding.bottom, tHeight - padding.top);
 
                     for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
-                        let itemColor = typeof style.itemColor === 'function' ? style.itemColor(i) : style.itemColor;
+                        if (data[i] !== null && data[i] !== undefined) {
+                            let itemColor = typeof style.itemColor === 'function' ? style.itemColor(i) : style.itemColor;
 
-                        renderItem({
-                            ctx: context,
-                            itemWidth,
-                            transform,
-                            incrementItemColor: style.incrementItemColor,
-                            decrementItemColor: style.decrementItemColor,
-                            itemColor
-                        }, data[i]);
-
+                            renderItem({
+                                ctx: context,
+                                itemWidth,
+                                transform,
+                                incrementItemColor: style.incrementItemColor,
+                                decrementItemColor: style.decrementItemColor,
+                                itemColor
+                            }, data[i]);
+                        }
                         context.translate(itemWidth, 0);
                     }
                     context.stroke();
@@ -765,18 +781,19 @@ const Chart = (() => {
                     context.restore();
                 };
 
-            const
-                renderAll = () => {
-                    for (let name in layers) {
-                        let layer = layers[name];
-                        render(layer);
-                    }
+            const renderAll = () => {
+                updateMinMax();
 
-                    renderXLabel();
-                    renderYLabel();
+                for (let name in layers) {
+                    let layer = layers[name];
+                    render(layer);
+                }
 
-                    reloadTooltip();
-                };
+                renderXLabel();
+                renderYLabel();
+
+                reloadTooltip();
+            };
 
             // 이벤트 리스너 등록
             // 줌 Zoom
@@ -981,7 +998,7 @@ const Chart = (() => {
                 showTooltip(index);
             };
             const focusIndex = pos => {
-                if (this.$rootConnect === null) {
+                if (isRoot() === true) {
                     $methodByKey[$key]
                         .dispatchFocusIndex(pos);
                 } else {
@@ -998,7 +1015,7 @@ const Chart = (() => {
                 floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
             };
             const unfocusIndex = () => {
-                if (this.$rootConnect === null) {
+                if (isRoot() === true) {
                     $methodByKey[$key]
                         .dispatchUnfocusIndex();
                 } else {
@@ -1038,7 +1055,7 @@ const Chart = (() => {
                         let lineWidth = 0;
                         let space = globalStyle.tooltipLetterSpace;
                         let rendered = false;
-                        let maxWidth = -Infinity;
+                        let maxWidth = minWidth;
 
                         texts.forEach(
                             text => {
@@ -1091,7 +1108,7 @@ const Chart = (() => {
                         return {
                             lineCount,
                             height: lineCount * lineHeight,
-                            width: Math.max(maxWidth, minWidth)
+                            width: maxWidth
                         };
                     };
                     return (index) => {
@@ -1124,7 +1141,7 @@ const Chart = (() => {
                             let text = tooltipForTypes[layer.type]
                             ({
                                 title: titles[name] || name,
-                                formatter: formatters[name],
+                                formatter: (formatters && formatters[name]),
                                 data: layer.data[index],
                             });
 
@@ -1202,16 +1219,19 @@ const Chart = (() => {
                                 data,
                                 style
                             } = layers[mainCandle];
-                            let {
-                                open,
-                                close
-                            } = data[index];
 
-                            tooltipCtx.fillStyle = open < close ?
-                                style.incrementItemColor : style.decrementItemColor;
+                            if (data[index]) {
+                                let {
+                                    open,
+                                    close
+                                } = data[index];
 
-                            tooltipCtx.fillRect(0, 0, globalStyle.tooltipCandleThick, rHeight);
-                            tooltipCtx.translate(globalStyle.tooltipCandleThick, 0);
+                                tooltipCtx.fillStyle = open < close ?
+                                    style.incrementItemColor : style.decrementItemColor;
+
+                                tooltipCtx.fillRect(0, 0, globalStyle.tooltipCandleThick, rHeight);
+                                tooltipCtx.translate(globalStyle.tooltipCandleThick, 0);
+                            }
                         }
 
                         if (!mainCandle && globalStyle.tooltipXAlign === 'right') {
@@ -1281,7 +1301,7 @@ const Chart = (() => {
             const connect = b => {
                 if (b instanceof Chart !== true) return;
 
-                if (this.$rootConnect !== null) {
+                if (isRoot() === true) {
                     $methodByKey[this.$rootConnect].connect(b);
                     return;
                 }
@@ -1301,7 +1321,7 @@ const Chart = (() => {
             };
 
             const disconnect = () => {
-                if (this.$rootConnect === null) {
+                if (isRoot() === true) {
                     $connect.map(key => $methodByKey[key].disconnect());
                     $connect.splice(0, $connect.length);
                 }
@@ -1316,7 +1336,7 @@ const Chart = (() => {
 
             $setMethodByKey($key, '_setViewport', _setViewport);
             $setMethodByKey($key, 'dispatchSetViewport', (s, e) => {
-                if (this.$rootConnect === null) {
+                if (isRoot() === true) {
 
                     _setViewport(s, e);
 
@@ -1329,7 +1349,7 @@ const Chart = (() => {
 
             $setMethodByKey($key, '_focusIndex', _focusIndex);
             $setMethodByKey($key, 'dispatchFocusIndex', (s, e) => {
-                if (this.$rootConnect === null) {
+                if (isRoot() === true) {
 
                     _focusIndex(s, e);
 
@@ -1342,7 +1362,7 @@ const Chart = (() => {
 
             $setMethodByKey($key, '_unfocusIndex', _unfocusIndex);
             $setMethodByKey($key, 'dispatchUnfocusIndex', (s, e) => {
-                if (this.$rootConnect === null) {
+                if (isRoot() === true) {
 
                     _unfocusIndex(s, e);
 
@@ -1350,6 +1370,19 @@ const Chart = (() => {
                         $methodByKey[key]._unfocusIndex(s, e);
                     });
 
+                }
+            });
+
+            $setMethodByKey($key, '_setTimeline', () => {
+                $timeline = $getMethodByKey($key, 'getTimeline')();
+                renderAll();
+            });
+
+            $setMethodByKey($key, 'dispatchSetTimeline', (s, e) => {
+                if (isRoot() === true) {
+                    $connect.map(key => {
+                        $methodByKey[key]._setTimeline();
+                    });
                 }
             });
 
@@ -1373,6 +1406,7 @@ const Chart = (() => {
             this.$connect = $connect;
             this.$rootConnect = null;
 
+            const isRoot = () => this.$rootConnect === null && this.$connect.length > 0;
             const publicFunctions = ['addLayer', 'setLayer', 'setViewport', 'getViewport', 'setTimeline', 'setPadding', 'setStyle', 'setTheme', 'resize', 'setDateFormatter', 'setTooltip', 'connect', 'disconnect'];
             for (let i = 0, l = publicFunctions.length; i < l; i++) {
                 eval(`this.${publicFunctions[i]} = (...argv) => { ${publicFunctions[i]}.apply(this, argv); return this; }`);
@@ -1406,6 +1440,7 @@ const Chart = (() => {
             setTheme("white");
         }
     }
+    Chart.themes = themes;
     Chart.getTheme = name => themes[name];
     Chart.addTheme = (name, th) => themes[name] = th;
     Chart.calculateMA = (dayCount, data) => {
