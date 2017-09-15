@@ -7,52 +7,61 @@ const Chart = (() => {
         // - style의 일부 속성들
 
         globalStyle: {
-            backgroundColor: '#f5f5f5',
+            backgroundColor: 'rgb(245, 250, 254)',
             fontFamily: `'Apple SD Gothic Neo',arial,sans-serif`,
 
             // yLabelAlign
             // : right
             // : left
-            yLabelAlign: "left",
-            yLabelWidth: 100,
             yLabelShow: true,
+            yLabelAlign: "right",
+            yLabelWidth: 100,
+
             yAxisShow: true,
+            yAxisColor: '#999',
 
             // xLabelAlign
             // : top
             // : bottom
+            xLabelShow: true,
             xLabelAlign: "bottom",
             xLabelHeight: 30,
-            xLabelShow: true,
+
             xAxisShow: true,
+            xAxisColor: '#999',
 
-            textColor: '#fff',
             labelColor: '#5d5d5d',
-            axisColor: '#999',
-            splitAxisColor: 'rgba(0,0,0,0.05)',
+            splitAxisColor: 'rgb(210, 215, 219)',
 
-            tooltipTitleColor: '#333',
-            tooltipBackgroundColor: 'rgba(0,0,0,0.6)',
-            tooltipXAlign: 'right',
+            tooltipTextColor: '#333',
+            tooltipBackgroundColor: 'transparent',
+            tooltipXAlign: 'left',
             tooltipYAlign: 'top',
             tooltipMinWidth: 100,
             tooltipFontSize: 14,
             tooltipXMargin: 5,
             tooltipYMargin: 5,
-            tooltipXPadding: 10,
+            tooltipXPadding: 20,
             tooltipYPadding: 5,
-            tooltipCandleThick: 10,
+            tooltipCandleThick: 5,
             tooltipLetterSpace: 10,
 
-            focusBackgroundColor: 'rgba(0, 175, 255, 0.2)',
+            focusXAxisColor: 'rgba(105, 100, 104, 0.1)',
+            focusXBackgroundColor: '#555',
+            focusXLabelColor: '#fff',
+            focusXAxisExtend: true,
+
+            focusYAxisColor: '#888',
+            focusYBackgroundColor: '#555',
+            focusYLabelColor: '#fff',
+            minSpan: 8
         },
 
         layerType: 'candle', // candle , line
         layerStyle: {
             candle: {
-                incrementItemColor: '#14b143',
-                decrementItemColor: '#ef232a',
-                minBodyWidth: 6
+                incrementItemColor: 'rgb(252,4,4)',
+                decrementItemColor: 'rgb(0,168,0)',
             },
             line: {
                 itemColor: '#000000'
@@ -81,7 +90,7 @@ const Chart = (() => {
     };
     // theme 은 globalStyle layerStyle 을 지정 가능
     const themes = {
-        gray: {
+        white: {
             globalStyle: {},
             layerStyle: {
                 candle: {},
@@ -92,12 +101,18 @@ const Chart = (() => {
             globalStyle: {
                 backgroundColor: '#151515',
                 labelColor: '#aaa',
-                splitAxisColor: 'rgba(255,255,255,0.1)',
-
-                tooltipBackgroundColor: 'rgba(255,255,255,0.1)'
+                splitAxisColor: '#555',
+                tooltipTextColor: '#fff',
+                focusXAxisColor: 'rgba(0, 175, 255, 0.2)',
+                focusXBackgroundColor: 'rgb(10,98,138)',
+                focusYBackgroundColor: '#333',
+                tooltipBackgroundColor: 'rgba(0,0,0,0.5)',
             },
             layerStyle: {
-                candle: {},
+                candle: {
+                    incrementItemColor: '#14b143',
+                    decrementItemColor: '#ef232a',
+                },
                 line: {
                     itemColor: '#999'
                 },
@@ -129,7 +144,7 @@ const Chart = (() => {
             ctx.strokeStyle = close > open ? style.incrementItemColor : style.decrementItemColor;
             ctx.fillStyle = close > open ? style.incrementItemColor : style.decrementItemColor;
 
-            if (itemWidth <= style.minBodyWidth) {
+            if (itemWidth <= 6  /* style.minBodyWidth */) {
                 ctx.beginPath();
                 ctx.moveTo(f(itemWidth * 0.5), f(t));
                 ctx.lineTo(f(itemWidth * 0.5), f(b));
@@ -191,7 +206,11 @@ const Chart = (() => {
                    data,
                    formatter = v => v,
                }) => data === null ? null : `${title} ${formatter(data)}`,
-        stick: item => item
+        stick: ({
+                    title,
+                    data,
+                    formatter = v => v,
+                }) => data === null ? null : `${title} ${formatter(data)}`,
     };
     const getMinForTypes = {
         candle: item => item.low,
@@ -392,8 +411,13 @@ const Chart = (() => {
             const _setViewport = (s, e) => {
                 if (s < 0 || e < 0 || (viewport[0] === s && viewport[1] === e)) return;
 
-                viewport[0] = Math.min(s, e);
-                viewport[1] = Math.max(s, e);
+                let max = Math.max(s, e), min = Math.min(s, e);
+
+                if (max - min < globalStyle.minSpan) {
+                    min = max - globalStyle.minSpan;
+                }
+                viewport[0] = min;
+                viewport[1] = max;
 
                 updateMinMax();
                 renderAll();
@@ -531,7 +555,7 @@ const Chart = (() => {
 
                 // Xlabel Settings
                 xLabelCtx.textBaseline = "middle";
-                xLabelCtx.textAlign = "left";
+                xLabelCtx.textAlign = globalStyle.yLabelAlign;
                 xLabelCtx.font = `12px ${globalStyle.fontFamily}`;
 
                 let xLineY = tHeight;
@@ -539,7 +563,7 @@ const Chart = (() => {
                 let xAxisY = xLabelAlign === 'bottom' ? xLineY : grid.top;
 
                 if (xLabelShow !== false) {
-                    xLabelCtx.strokeStyle = globalStyle.axisColor;
+                    xLabelCtx.strokeStyle = globalStyle.xAxisColor;
                     xLabelCtx.beginPath();
                     xLabelCtx.moveTo(0, xAxisY);
                     xLabelCtx.lineTo(tWidth, xAxisY);
@@ -563,7 +587,7 @@ const Chart = (() => {
                         }
 
                         if (xLabelShow !== false) {
-                            xLabelCtx.strokeStyle = globalStyle.axisColor;
+                            xLabelCtx.strokeStyle = globalStyle.xAxisColor;
                             xLabelCtx.beginPath();
                             xLabelCtx.moveTo(xLineLabelX, xAxisY + (xLabelAlign === 'bottom' ? 5 : -5));
                             xLabelCtx.lineTo(xLineLabelX, xAxisY);
@@ -614,7 +638,8 @@ const Chart = (() => {
                 let yLineX = f(yLabelAlign === 'left' ? yLabelWidth : width - yLabelWidth);
 
 
-                yLabelCtx.strokeStyle = globalStyle.axisColor;
+                yLabelCtx.strokeStyle = globalStyle.yAxisColor;
+                yLabelCtx.fillStyle = globalStyle.labelColor;
 
                 if (yLabelShow !== false) {
                     yLabelCtx.beginPath();
@@ -624,21 +649,14 @@ const Chart = (() => {
                     yLabelCtx.stroke();
                 }
 
-                let split = 10;
-                let temp = (max - min) / split;
-                let tempIncrease = 10;
-                let tempSplit = 1;
+                let split = 5;
+                let increase = (max - min) / split;
 
-                while (tempSplit + tempIncrease < temp) {
-                    tempSplit *= tempIncrease;
-                }
-
-                let rd = f(min - (min % tempSplit));
-
-                yLabelCtx.fillStyle = globalStyle.labelColor;
+                let _increase = 10;
 
                 for (let i = 0; i < split; i++) {
-                    let d = rd + tempSplit * i;
+                    let d = min + increase * i;
+
                     if (d > max) break;
                     else if (d < min) continue;
 
@@ -811,11 +829,13 @@ const Chart = (() => {
             const _focusIndex = ({
                                      x,
                                      y
-                                 }) => {
+                                 }, xFocus = true, yFocus = false, clear = true) => {
                 let {
                     tWidth,
                     tHeight,
                 } = getTransformSize();
+
+                let realPrice = map(y, grid.top, tHeight + grid.top, min, max);
 
                 let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
                 let screenIndex = Math.floor((x - grid.left) / itemWidth);
@@ -831,19 +851,74 @@ const Chart = (() => {
 
                 floatCtx.save();
 
-                floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
+                if (clear === true) {
+                    floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
+                }
+
                 floatCtx.translate(grid.left, 0);
+                floatCtx.font = `12px ${globalStyle.fontFamily}`;
 
-                /* x focus */
-                floatCtx.fillStyle = globalStyle.focusBackgroundColor;
-                floatCtx.strokeStyle = globalStyle.focusBorderColor;
+                if (xFocus === true) {
 
-                floatCtx.fillRect(screenIndex * itemWidth, grid.top, itemWidth, tHeight);
+                    floatCtx.textAlign = globalStyle.xLabelAlign;
+                    floatCtx.textBaseline = 'middle';
 
+                    floatCtx.strokeStyle = floatCtx.fillStyle = globalStyle.focusXAxisColor;
+                    if (globalStyle.focusXAxisExtend === true) {
+                        floatCtx.fillRect(screenIndex * itemWidth, grid.top, itemWidth, tHeight);
+                    } else {
+                        let lx = screenIndex * itemWidth + itemWidth / 2;
+                        floatCtx.beginPath();
+                        floatCtx.moveTo(lx, 0);
+                        floatCtx.lineTo(lx, grid.top + tHeight);
+                        floatCtx.closePath();
+                        floatCtx.stroke();
+                    }
+                    if (globalStyle.xLabelShow !== false) {
+                        /* x focus */
+                        let text = applyDateFormatter($timeline[index], dateFormatter);
+                        let textWidth = floatCtx.measureText(text).width;
+                        let paddingLR = 5;
+
+                        if (textWidth + paddingLR * 2 < itemWidth) {
+                            paddingLR = (itemWidth - textWidth) / 2;
+                            textWidth = itemWidth - paddingLR * 2;
+                        }
+
+                        let tx = screenIndex * itemWidth, ty, gy;
+
+                        if (globalStyle.xLabelAlign === 'top') {
+                            ty = 0;
+                            gy = grid.top;
+                        } else {
+                            ty = tHeight;
+                            gy = grid.bottom;
+                        }
+
+                        if (globalStyle.yLabelAlign === 'left') {
+
+                        } else {
+                            tx -= textWidth + paddingLR * 2 - itemWidth;
+                        }
+                        //
+                        // floatCtx.fillStyle = globalStyle.backgroundColor;
+                        // floatCtx.fillRect(tx + itemWidth / 2,ty,textWidth, gy - 1);
+
+                        floatCtx.fillStyle = globalStyle.focusXBackgroundColor;
+                        floatCtx.fillRect(tx, ty, textWidth + paddingLR * 2, gy);
+
+                        floatCtx.fillStyle = globalStyle.focusXLabelColor;
+                        floatCtx.fillText(text, tx + paddingLR, ty + (gy / 2));
+
+                    }
+                }
                 /* y focus */
-                if (grid.top + tHeight >= y && grid.top <= y) {
+                if (yFocus === true && grid.top + tHeight >= y && grid.top <= y) {
 
-                    floatCtx.strokeStyle = '#aaa';
+                    floatCtx.textBaseline = 'middle';
+
+                    floatCtx.strokeStyle = globalStyle.focusYAxisColor;
+                    floatCtx.fillStyle = globalStyle.focusYBackgroundColor;
 
                     floatCtx.beginPath();
                     floatCtx.moveTo(0, y);
@@ -851,9 +926,23 @@ const Chart = (() => {
                     floatCtx.closePath();
                     floatCtx.stroke();
 
-                    if(globalStyle.yLabelAlign === 'left'){}
-                    
-                    floatCtx.fillRect(-grid.left, y-10,)
+                    let x, w, h = 20, tx;
+
+                    if (globalStyle.yLabelAlign === 'left') {
+                        x = -grid.left;
+                        w = grid.left;
+                        tx = -10;
+                        floatCtx.textAlign = 'right';
+                    } else {
+                        x = tWidth;
+                        w = grid.right;
+                        tx = tWidth + 10;
+                        floatCtx.textAlign = 'left';
+                    }
+                    floatCtx.fillRect(x, y - h / 2, w, h);
+
+                    floatCtx.fillStyle = globalStyle.focusYLabelColor;
+                    floatCtx.fillText(f(realPrice), tx, y);
 
                 }
 
@@ -876,10 +965,11 @@ const Chart = (() => {
                 } else {
                     $methodByKey[this.$rootConnect]
                         .dispatchFocusIndex(pos);
+                    _focusIndex(pos, false, true, false);
                     return;
                 }
 
-                _focusIndex(pos);
+                _focusIndex(pos, true, true);
             };
 
             const _unfocusIndex = () => {
@@ -1020,7 +1110,7 @@ const Chart = (() => {
 
                             texts.push({
                                 text,
-                                color: layer.style.itemColor || globalStyle.textColor
+                                color: layer.style.itemColor || globalStyle.tooltipTextColor
                             });
                         }
 
@@ -1095,18 +1185,19 @@ const Chart = (() => {
                                 close
                             } = data[index];
 
-                            tooltipCtx.globalAlpha = 0.8;
                             tooltipCtx.fillStyle = open < close ?
                                 style.incrementItemColor : style.decrementItemColor;
 
                             tooltipCtx.fillRect(0, 0, globalStyle.tooltipCandleThick, rHeight);
-                            tooltipCtx.globalAlpha = 1;
-
+                            tooltipCtx.translate(globalStyle.tooltipCandleThick, 0);
                         }
-                        tooltipCtx.translate(globalStyle.tooltipCandleThick, 0);
+
+                        if (!mainCandle && globalStyle.tooltipXAlign === 'right') {
+                            tooltipCtx.translate(globalStyle.tooltipCandleThick, 0);
+                        }
 
                         tooltipCtx.fillStyle = globalStyle.tooltipBackgroundColor;
-                        tooltipCtx.fillRect(0.5, 0, rWidth, rHeight);
+                        tooltipCtx.fillRect(0, 0, rWidth, rHeight);
 
                         tooltipCtx.translate(pHorizontal / 2, pVertical / 2 + 1.2);
 
@@ -1287,7 +1378,7 @@ const Chart = (() => {
             };
 
             setGrid();
-            setTheme("gray");
+            setTheme("white");
         }
     }
 
