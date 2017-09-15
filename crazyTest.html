@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Candle.js</title>
+    <title>Crazy Test</title>
     <meta charset="utf-8">
 
     <script src="./src/candle.js"></script>
@@ -165,6 +165,27 @@
     mainChart.connect(subBChart);
 
     //  mainChart.disconnect();
+    setInterval(() => mainChart.setLayer('candle', {
+        data: data.map(
+            item => ({
+                open: Math.random() * 100000,
+                close: Math.random() * 1000000,
+                high: Math.random() * 100000,
+                low: Math.random() * 100000
+            })
+        )
+    }), 10);
+    var random = function (a, b) {
+        return Math.floor(Math.random() * (b - a + 1));
+    };
+//    setInterval(() => document.body.style.backgroundColor = `rgb(${random(0, 255)},${random(0, 255)},${random(0, 255)})`, 10);
+
+    setInterval(() => mainChart.setLayer('ma10', {data: data.map(() => Math.random() * 100000)}), 10);
+    setInterval(() => mainChart.setLayer('ma30', {data: data.map(() => Math.random() * 100000)}), 10);
+
+    setInterval(() => subAChart.setLayer('volume', {data: data.map(() => Math.random() * 100000)}), 10);
+    setInterval(() => subBChart.setLayer('ma10', {data: data.map(() => Math.random() * 100000)}), 10);
+    setInterval(() => subBChart.setLayer('ma5', {data: data.map(() => Math.random() * 100000)}), 10);
 </script>
 </body>
 

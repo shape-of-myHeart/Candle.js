@@ -8,7 +8,9 @@ const Chart = (() => {
 
         globalStyle: {
             backgroundColor: 'rgb(245, 250, 254)',
-            fontFamily: `'Apple SD Gothic Neo',arial,sans-serif`,
+
+            fontFamily: `맑은고딕`,
+            labelColor: '#5d5d5d',
 
             // yLabelAlign
             // : right
@@ -30,8 +32,11 @@ const Chart = (() => {
             xAxisShow: true,
             xAxisColor: '#999',
 
-            labelColor: '#5d5d5d',
-            splitAxisColor: 'rgb(210, 215, 219)',
+            xSplitAxisColor: 'rgb(210, 215, 219)',
+            xSplitAxisDotted: false,
+
+            ySplitAxisColor: 'rgb(210, 215, 219)',
+            ySplitAxisDotted: [1, 2],
 
             tooltipTextColor: '#333',
             tooltipBackgroundColor: 'transparent',
@@ -101,7 +106,8 @@ const Chart = (() => {
             globalStyle: {
                 backgroundColor: '#151515',
                 labelColor: '#aaa',
-                splitAxisColor: '#555',
+                xSplitAxisColor: '#333',
+                ySplitAxisColor: '#333',
                 tooltipTextColor: '#fff',
                 focusXAxisColor: 'rgba(0, 175, 255, 0.2)',
                 focusXBackgroundColor: 'rgb(10,98,138)',
@@ -129,7 +135,8 @@ const Chart = (() => {
                      ctx,
                      itemWidth,
                      transform,
-                     style
+                     decrementItemColor,
+                     incrementItemColor
                  }, {
                      open,
                      close,
@@ -141,8 +148,8 @@ const Chart = (() => {
                 t = transform(high),
                 b = transform(low);
 
-            ctx.strokeStyle = close > open ? style.incrementItemColor : style.decrementItemColor;
-            ctx.fillStyle = close > open ? style.incrementItemColor : style.decrementItemColor;
+            ctx.strokeStyle = close > open ? incrementItemColor : decrementItemColor;
+            ctx.fillStyle = close > open ? incrementItemColor : decrementItemColor;
 
             if (itemWidth <= 6  /* style.minBodyWidth */) {
                 ctx.beginPath();
@@ -172,26 +179,26 @@ const Chart = (() => {
                    ctx,
                    itemWidth,
                    transform,
-                   style
+                   itemColor
                }, data) => {
             if (data === null) return;
             let y = transform(data);
 
-            ctx.fillStyle = style.itemColor;
-            ctx.strokeStyle = style.itemColor;
+            ctx.fillStyle = itemColor;
+            ctx.strokeStyle = itemColor;
             ctx.lineTo(f(itemWidth * 0.5), y);
         },
         stick: ({
                     ctx,
                     itemWidth,
                     transform,
-                    style
+                    itemColor
                 }, data) => {
             if (data === null) return;
 
             let y = transform(data);
 
-            ctx.fillStyle = style.itemColor;
+            ctx.fillStyle = itemColor;
             ctx.fillRect(1, f(y), itemWidth - 2, f(-y));
         }
     };
@@ -389,7 +396,7 @@ const Chart = (() => {
 
                 updateMinMax();
 
-                render(layer);
+                renderAll();
                 reloadTooltip();
             };
             const layerMap = (func, formatter) => {
@@ -468,7 +475,6 @@ const Chart = (() => {
 
                 setGrid();
                 renderAll();
-                console.log(globalStyle.xLabelAlign)
             };
 
             const setGrid = () => {
@@ -577,7 +583,10 @@ const Chart = (() => {
                         let xLineLabelX = f(itemWidth * 0.5);
 
                         if (xAxisShow !== false) {
-                            xLabelCtx.strokeStyle = globalStyle.splitAxisColor;
+                            if (Array.isArray(globalStyle.xSplitAxisDotted)) {
+                                xLabelCtx.setLineDash(globalStyle.xSplitAxisDotted);
+                            }
+                            xLabelCtx.strokeStyle = globalStyle.xSplitAxisColor;
                             xLabelCtx.beginPath();
                             xLabelCtx.moveTo(xLineLabelX, grid.top);
                             xLabelCtx.lineTo(xLineLabelX, xLineY + grid.top);
@@ -636,7 +645,6 @@ const Chart = (() => {
 
                 let yLineX = f(yLabelAlign === 'left' ? yLabelWidth : width - yLabelWidth);
 
-
                 yLabelCtx.strokeStyle = globalStyle.yAxisColor;
                 yLabelCtx.fillStyle = globalStyle.labelColor;
 
@@ -648,16 +656,19 @@ const Chart = (() => {
                     yLabelCtx.stroke();
                 }
 
-                let split = 5;
+                let split = 2;
                 let increase = (max - min) / split;
 
-                let _increase = 1000;
+                let _increase = 1;
+                while (increase > 10 * _increase){
+                    _increase *= 10;
+                }
                 increase -= increase % _increase;
                 increase = f(increase);
 
                 let base = f(min - min % increase);
 
-                for (let i = 0; i <= split; i++) {
+                for (let i = 0; i <= split + 10; i++) {
                     let d = base + increase * i;
 
                     if (d > max) break;
@@ -676,7 +687,10 @@ const Chart = (() => {
                         yLabelCtx.stroke();
                     }
                     if (yAxisShow !== false) {
-                        yLabelCtx.strokeStyle = globalStyle.splitAxisColor;
+                        if (Array.isArray(globalStyle.ySplitAxisDotted)) {
+                            yLabelCtx.setLineDash(globalStyle.ySplitAxisDotted);
+                        }
+                        yLabelCtx.strokeStyle = globalStyle.ySplitAxisColor;
                         yLabelCtx.beginPath();
                         yLabelCtx.moveTo(grid.left, y);
                         yLabelCtx.lineTo(tWidth + grid.left - 1, y);
@@ -732,12 +746,17 @@ const Chart = (() => {
                     let transform = v => -map(v, min, max, padding.bottom, tHeight - padding.top);
 
                     for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
+                        let itemColor = typeof style.itemColor === 'function' ? style.itemColor(i) : style.itemColor;
+
                         renderItem({
                             ctx: context,
                             itemWidth,
                             transform,
-                            style
+                            incrementItemColor: style.incrementItemColor,
+                            decrementItemColor: style.decrementItemColor,
+                            itemColor
                         }, data[i]);
+
                         context.translate(itemWidth, 0);
                     }
                     context.stroke();
@@ -1109,11 +1128,11 @@ const Chart = (() => {
                                 data: layer.data[index],
                             });
 
-                            if (text === null) return;
+                            if (text === null) continue;
 
                             texts.push({
                                 text,
-                                color: layer.style.itemColor || globalStyle.tooltipTextColor
+                                color: typeof layer.style.itemColor === 'string' ? layer.style.itemColor : globalStyle.tooltipTextColor
                             });
                         }
 
@@ -1202,7 +1221,7 @@ const Chart = (() => {
                         tooltipCtx.fillStyle = globalStyle.tooltipBackgroundColor;
                         tooltipCtx.fillRect(0, 0, rWidth, rHeight);
 
-                        tooltipCtx.translate(pHorizontal / 2, pVertical / 2 + 1.2);
+                        tooltipCtx.translate(pHorizontal / 2, 1.2);
 
                         rTooltip();
 
@@ -1387,7 +1406,7 @@ const Chart = (() => {
             setTheme("white");
         }
     }
-
+    Chart.getTheme = name => themes[name];
     Chart.addTheme = (name, th) => themes[name] = th;
     Chart.calculateMA = (dayCount, data) => {
         let result = [],
@@ -1405,6 +1424,22 @@ const Chart = (() => {
             }
         }
         return result;
+    };
+    Chart.toPrice = (a, b) => {
+        if (isNaN(a)) {
+            return 'N/A';
+        }
+        if (b !== true) {
+            a = Math.floor(a);
+        }
+        const s = a.toString().split('.');
+        const f = s[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+        if (s[1] === undefined) {
+            return f;
+        } else {
+            return f + '.' + s[1];
+        }
     };
 
     return Chart;
