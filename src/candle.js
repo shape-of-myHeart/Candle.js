@@ -439,7 +439,7 @@ const Chart = (() => {
             const setViewport = (s, e) => {
                 if (s < 0 || e < 0 || (viewport[0] === s && viewport[1] === e)) return;
 
-                if (isRoot()) {
+                if (isRoot() === true) {
                     $methodByKey[$key]
                         .dispatchSetViewport(s, e);
                 } else {
@@ -1301,7 +1301,7 @@ const Chart = (() => {
             const connect = b => {
                 if (b instanceof Chart !== true) return;
 
-                if (isRoot() === true) {
+                if (this.$rootConnect !== null) {
                     $methodByKey[this.$rootConnect].connect(b);
                     return;
                 }
@@ -1336,9 +1336,7 @@ const Chart = (() => {
 
             $setMethodByKey($key, '_setViewport', _setViewport);
             $setMethodByKey($key, 'dispatchSetViewport', (s, e) => {
-                if (isRoot() === true) {
-
-                    _setViewport(s, e);
+                if (this.$connect.length > 0) {
 
                     $connect.map(key => {
                         $methodByKey[key]._setViewport(s, e);
@@ -1349,9 +1347,7 @@ const Chart = (() => {
 
             $setMethodByKey($key, '_focusIndex', _focusIndex);
             $setMethodByKey($key, 'dispatchFocusIndex', (s, e) => {
-                if (isRoot() === true) {
-
-                    _focusIndex(s, e);
+                if (this.$connect.length > 0) {
 
                     $connect.map(key => {
                         $methodByKey[key]._focusIndex(s, e);
@@ -1362,9 +1358,7 @@ const Chart = (() => {
 
             $setMethodByKey($key, '_unfocusIndex', _unfocusIndex);
             $setMethodByKey($key, 'dispatchUnfocusIndex', (s, e) => {
-                if (isRoot() === true) {
-
-                    _unfocusIndex(s, e);
+                if (this.$connect.length > 0) {
 
                     $connect.map(key => {
                         $methodByKey[key]._unfocusIndex(s, e);
@@ -1379,7 +1373,7 @@ const Chart = (() => {
             });
 
             $setMethodByKey($key, 'dispatchSetTimeline', (s, e) => {
-                if (isRoot() === true) {
+                if (this.$connect.length > 0) {
                     $connect.map(key => {
                         $methodByKey[key]._setTimeline();
                     });
@@ -1406,27 +1400,21 @@ const Chart = (() => {
             this.$connect = $connect;
             this.$rootConnect = null;
 
-            const isRoot = () => this.$rootConnect === null && this.$connect.length > 0;
-            const publicFunctions = ['addLayer', 'setLayer', 'setViewport', 'getViewport', 'setTimeline', 'setPadding', 'setStyle', 'setTheme', 'resize', 'setDateFormatter', 'setTooltip', 'connect', 'disconnect'];
-            for (let i = 0, l = publicFunctions.length; i < l; i++) {
-                eval(`this.${publicFunctions[i]} = (...argv) => { ${publicFunctions[i]}.apply(this, argv); return this; }`);
-            }
+            const isRoot = () => this.$rootConnect === null;
 
-            // this.addLayer = addLayer;
-            // this.setLayer = setLayer;
-            // this.setViewport = setViewport;
-            // this.getViewport = getViewport;
-            // this.setTimeline = setTimeline;
-            // this.setPadding = setPadding;
-            // this.setStyle = setStyle;
-            // this.setTheme = setTheme;
-            // this.resize = resize;
-            //
-            // this.setDateFormatter = setDateFormatter;
-            // this.setTooltip = setTooltip;
-            //
-            // this.connect = connect;
-            // this.disconnect = disconnect;
+            this.addLayer = (...argv) => { addLayer.apply(this, argv); return this; }
+            this.setLayer = (...argv) => { setLayer.apply(this, argv); return this; }
+            this.setViewport = (...argv) => { setViewport.apply(this, argv); return this; }
+            this.getViewport = (...argv) => { getViewport.apply(this, argv); return this; }
+            this.setTimeline = (...argv) => { setTimeline.apply(this, argv); return this; }
+            this.setPadding = (...argv) => { setPadding.apply(this, argv); return this; }
+            this.setStyle = (...argv) => { setStyle.apply(this, argv); return this; }
+            this.setTheme = (...argv) => { setTheme.apply(this, argv); return this; }
+            this.resize = (...argv) => { resize.apply(this, argv); return this; }
+            this.setDateFormatter = (...argv) => { setDateFormatter.apply(this, argv); return this; }
+            this.setTooltip = (...argv) => { setTooltip.apply(this, argv); return this; }
+            this.connect = (...argv) => { connect.apply(this, argv); return this; }
+            this.disconnect = (...argv) => { disconnect.apply(this, argv); return this; }
 
             this.render = () => {
                 renderAll();
