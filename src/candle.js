@@ -181,7 +181,6 @@ const Chart = (() => {
                    transform,
                    itemColor
                }, data) => {
-            if (data === null) return;
             let y = transform(data);
 
             ctx.fillStyle = itemColor;
@@ -194,9 +193,8 @@ const Chart = (() => {
                     transform,
                     itemColor
                 }, data) => {
-            if (data === null) return;
-
             let y = transform(data);
+
             let g = 1;
             if (f(itemWidth) <= 3) {
                 ctx.strokeStyle = itemColor;
@@ -296,7 +294,6 @@ const Chart = (() => {
     // private
     const $methodByKey = {};
 
-    // public
     const $setMethodByKey = (key, name, func) => {
         if (!$methodByKey[key]) $methodByKey[key] = [];
         $methodByKey[key][name] = func;
@@ -544,7 +541,6 @@ const Chart = (() => {
                     if (arr[i].min < _min) _min = arr[i].min;
                     if (arr[i].max > _max) _max = arr[i].max;
                 }
-
                 min = _min;
                 max = _max;
             };
@@ -719,6 +715,12 @@ const Chart = (() => {
                 yLabelCtx.restore();
             };
 
+            let transforms = {
+                candle: tHeight => v => -map(v, min, max, padding.bottom, tHeight - padding.top),
+                line: tHeight => v => -map(v, min, max, padding.bottom, tHeight - padding.top),
+                stick: tHeight => v => -map(v, min, max, padding.bottom, tHeight - padding.top) + padding.bottom
+            };
+
             // 출력 메소드
             const
                 render = layer => {
@@ -760,7 +762,7 @@ const Chart = (() => {
 
                     context.beginPath();
 
-                    let transform = v => -map(v, min, max, padding.bottom, tHeight - padding.top);
+                    let transform = transforms[type](tHeight);
 
                     for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
                         if (data[i] !== null && data[i] !== undefined) {
@@ -875,8 +877,7 @@ const Chart = (() => {
                     tWidth,
                     tHeight,
                 } = getTransformSize();
-
-                let realPrice = map(y, grid.top, tHeight + grid.top, min, max);
+                let realPrice = max - (map(y, grid.top, tHeight + grid.top, min, max) - min);
 
                 let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
                 let screenIndex = Math.floor((x - grid.left) / itemWidth);
@@ -1340,7 +1341,7 @@ const Chart = (() => {
             $setMethodByKey($key, 'dispatchSetViewport', (s, e) => {
                 if (this.$connect.length > 0) {
 
-                    _setViewport(s,e);
+                    _setViewport(s, e);
 
                     $connect.map(key => {
                         $methodByKey[key]._setViewport(s, e);
@@ -1410,19 +1411,58 @@ const Chart = (() => {
 
             const isRoot = () => this.$rootConnect === null;
 
-            this.addLayer = (...argv) => { addLayer.apply(this, argv); return this; }
-            this.setLayer = (...argv) => { setLayer.apply(this, argv); return this; }
-            this.setViewport = (...argv) => { setViewport.apply(this, argv); return this; }
-            this.getViewport = (...argv) => { getViewport.apply(this, argv); return this; }
-            this.setTimeline = (...argv) => { setTimeline.apply(this, argv); return this; }
-            this.setPadding = (...argv) => { setPadding.apply(this, argv); return this; }
-            this.setStyle = (...argv) => { setStyle.apply(this, argv); return this; }
-            this.setTheme = (...argv) => { setTheme.apply(this, argv); return this; }
-            this.resize = (...argv) => { resize.apply(this, argv); return this; }
-            this.setDateFormatter = (...argv) => { setDateFormatter.apply(this, argv); return this; }
-            this.setTooltip = (...argv) => { setTooltip.apply(this, argv); return this; }
-            this.connect = (...argv) => { connect.apply(this, argv); return this; }
-            this.disconnect = (...argv) => { disconnect.apply(this, argv); return this; }
+            this.addLayer = (...argv) => {
+                addLayer.apply(this, argv);
+                return this;
+            }
+            this.setLayer = (...argv) => {
+                setLayer.apply(this, argv);
+                return this;
+            }
+            this.setViewport = (...argv) => {
+                setViewport.apply(this, argv);
+                return this;
+            }
+            this.getViewport = (...argv) => {
+                getViewport.apply(this, argv);
+                return this;
+            }
+            this.setTimeline = (...argv) => {
+                setTimeline.apply(this, argv);
+                return this;
+            }
+            this.setPadding = (...argv) => {
+                setPadding.apply(this, argv);
+                return this;
+            }
+            this.setStyle = (...argv) => {
+                setStyle.apply(this, argv);
+                return this;
+            }
+            this.setTheme = (...argv) => {
+                setTheme.apply(this, argv);
+                return this;
+            }
+            this.resize = (...argv) => {
+                resize.apply(this, argv);
+                return this;
+            }
+            this.setDateFormatter = (...argv) => {
+                setDateFormatter.apply(this, argv);
+                return this;
+            }
+            this.setTooltip = (...argv) => {
+                setTooltip.apply(this, argv);
+                return this;
+            }
+            this.connect = (...argv) => {
+                connect.apply(this, argv);
+                return this;
+            }
+            this.disconnect = (...argv) => {
+                disconnect.apply(this, argv);
+                return this;
+            }
 
             this.render = () => {
                 renderAll();
