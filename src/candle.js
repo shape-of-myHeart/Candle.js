@@ -1,4 +1,5 @@
 const Chart = (() => {
+    const df = v => v;
     const init = {
         // type 에 의존하는 속성값들
         // - renderItem (renderForTypes 변수 참조.)
@@ -240,7 +241,6 @@ const Chart = (() => {
     };
 
     // 유틸 메소드
-    const df = v => v;
     const map = (n, a, b, c, d) => ((n - a) / (b - a)) * (d - c) + c;
     const f = Math.floor;
     const overwrite = (target, base) => {
@@ -485,10 +485,11 @@ const Chart = (() => {
             // 스타일 메소드
             const setStyle = pStyle => {
                 globalStyle = overwrite(pStyle, globalStyle);
-
                 setGrid();
                 renderAll();
             };
+            let yLabelFormatter = f;
+            const setYLabelFormatter = f => yLabelFormatter = f;
 
             const setGrid = () => {
                 let xs = globalStyle.xLabelShow === false ? 0 : 1,
@@ -690,7 +691,7 @@ const Chart = (() => {
                     let y = -map(d, min, max, 0, tHeight);
 
                     if (yLabelShow !== false) {
-                        yLabelCtx.fillText(d.toString(), yLineX + (yLabelAlign === 'right' ? 10 : -10), y);
+                        yLabelCtx.fillText(yLabelFormatter(d), yLineX + (yLabelAlign === 'right' ? 10 : -10), y);
 
                         yLabelCtx.strokeStyle = globalStyle.labelColor;
                         yLabelCtx.beginPath();
@@ -722,68 +723,67 @@ const Chart = (() => {
             };
 
             // 출력 메소드
-            const
-                render = layer => {
-                    let {
-                        data,
-                        type,
-                        context,
-                        canvas,
-                        style
-                    } = layer;
+            const render = layer => {
+                let {
+                    data,
+                    type,
+                    context,
+                    canvas,
+                    style
+                } = layer;
 
-                    let width = wrapper.clientWidth,
-                        height = wrapper.clientHeight;
+                let width = wrapper.clientWidth,
+                    height = wrapper.clientHeight;
 
-                    if ($timeline.length === 0) return;
+                if ($timeline.length === 0) return;
 
-                    if (isNaN(viewport[0]) === true || isNaN(viewport[1]) === true || viewport[0] === undefined || viewport[1] === undefined) {
-                        setViewport(0, $timeline.length);
+                if (isNaN(viewport[0]) === true || isNaN(viewport[1]) === true || viewport[0] === undefined || viewport[1] === undefined) {
+                    setViewport(0, $timeline.length);
+                }
+
+                // 레이어 타입에 따른 메소드를 가져온다.
+                let renderItem = renderForTypes[type];
+
+                // Transform Size
+                let {
+                    tWidth,
+                    tHeight,
+                } = getTransformSize();
+
+                let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
+
+                context.save();
+
+                // Clear
+                context.clearRect(-10, -10, width + 10, height + 10);
+
+                // Translate
+                context.translate(grid.left, tHeight + grid.top);
+
+                context.beginPath();
+
+                let transform = transforms[type](tHeight);
+
+                for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
+                    if (data[i] !== null && data[i] !== undefined) {
+                        let itemColor = typeof style.itemColor === 'function' ? style.itemColor(i) : style.itemColor;
+
+                        renderItem({
+                            ctx: context,
+                            itemWidth,
+                            transform,
+                            incrementItemColor: style.incrementItemColor,
+                            decrementItemColor: style.decrementItemColor,
+                            itemColor
+                        }, data[i]);
                     }
+                    context.translate(itemWidth, 0);
+                }
+                context.stroke();
+                context.closePath();
 
-                    // 레이어 타입에 따른 메소드를 가져온다.
-                    let renderItem = renderForTypes[type];
-
-                    // Transform Size
-                    let {
-                        tWidth,
-                        tHeight,
-                    } = getTransformSize();
-
-                    let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
-
-                    context.save();
-
-                    // Clear
-                    context.clearRect(-10, -10, width + 10, height + 10);
-
-                    // Translate
-                    context.translate(grid.left, tHeight + grid.top);
-
-                    context.beginPath();
-
-                    let transform = transforms[type](tHeight);
-
-                    for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
-                        if (data[i] !== null && data[i] !== undefined) {
-                            let itemColor = typeof style.itemColor === 'function' ? style.itemColor(i) : style.itemColor;
-
-                            renderItem({
-                                ctx: context,
-                                itemWidth,
-                                transform,
-                                incrementItemColor: style.incrementItemColor,
-                                decrementItemColor: style.decrementItemColor,
-                                itemColor
-                            }, data[i]);
-                        }
-                        context.translate(itemWidth, 0);
-                    }
-                    context.stroke();
-                    context.closePath();
-
-                    context.restore();
-                };
+                context.restore();
+            };
 
             const renderAll = () => {
                 updateMinMax();
@@ -984,7 +984,7 @@ const Chart = (() => {
                     floatCtx.fillRect(x, y - h / 2, w, h);
 
                     floatCtx.fillStyle = globalStyle.focusYLabelColor;
-                    floatCtx.fillText(f(realPrice), tx, y);
+                    floatCtx.fillText(yLabelFormatter(realPrice), tx, y);
 
                 }
 
@@ -1463,6 +1463,11 @@ const Chart = (() => {
                 disconnect.apply(this, argv);
                 return this;
             }
+            this.setYLabelFormatter = (...argv) => {
+                setYLabelFormatter.apply(this, argv);
+                return this;
+            }
+
 
             this.render = () => {
                 renderAll();
