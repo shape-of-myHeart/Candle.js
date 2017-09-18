@@ -1339,6 +1339,8 @@ const Chart = (() => {
             $setMethodByKey($key, '_setViewport', _setViewport);
             $setMethodByKey($key, 'dispatchSetViewport', (s, e) => {
                 if (this.$connect.length > 0) {
+                    
+                    _setViewport(s,e);
 
                     $connect.map(key => {
                         $methodByKey[key]._setViewport(s, e);
@@ -1348,35 +1350,39 @@ const Chart = (() => {
             });
 
             $setMethodByKey($key, '_focusIndex', _focusIndex);
-            $setMethodByKey($key, 'dispatchFocusIndex', (s, e) => {
+            $setMethodByKey($key, 'dispatchFocusIndex', pos => {
                 if (this.$connect.length > 0) {
-
+                    
+                    _focusIndex(pos);
+                    
                     $connect.map(key => {
-                        $methodByKey[key]._focusIndex(s, e);
+                        $methodByKey[key]._focusIndex(pos);
                     });
 
                 }
             });
 
             $setMethodByKey($key, '_unfocusIndex', _unfocusIndex);
-            $setMethodByKey($key, 'dispatchUnfocusIndex', (s, e) => {
+            $setMethodByKey($key, 'dispatchUnfocusIndex', () => {
                 if (this.$connect.length > 0) {
+                    
+                    _unFocusIndex();
 
                     $connect.map(key => {
-                        $methodByKey[key]._unfocusIndex(s, e);
+                        $methodByKey[key]._unfocusIndex();
                     });
 
                 }
             });
 
             $setMethodByKey($key, '_setTimeline', () => {
-                $timeline = $getMethodByKey($key, 'getTimeline')();
                 renderAll();
             });
 
-            $setMethodByKey($key, 'dispatchSetTimeline', (s, e) => {
+            $setMethodByKey($key, 'dispatchSetTimeline', () => {
                 if (this.$connect.length > 0) {
                     $connect.map(key => {
+                        $setMethodByKey($key, 'getTimeline', () => timeline);
                         $methodByKey[key]._setTimeline();
                     });
                 }
