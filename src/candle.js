@@ -268,7 +268,7 @@ const Chart = (() => {
                 case "HH":
                     return zf(d.getHours(), 2);
                 case "hh":
-                    return zf((h = d.getHours() % 12) ? h : 12, 2);
+                    return zf((let h = d.getHours() % 12) ? h : 12, 2);
                 case "mm":
                     return zf(d.getMinutes(), 2);
                 case "ss":
