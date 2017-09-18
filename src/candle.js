@@ -192,7 +192,9 @@ const Chart = (() => {
                     ctx,
                     itemWidth,
                     transform,
-                    itemColor
+                    itemColor,
+                    tHeight,
+                    min
                 }, data) => {
             let y = transform(data);
 
@@ -201,13 +203,13 @@ const Chart = (() => {
                 ctx.strokeStyle = itemColor;
                 ctx.beginPath();
                 ctx.moveTo(f(itemWidth * 0.5), f(y));
-                ctx.lineTo(f(itemWidth * 0.5), 0);
+                ctx.lineTo(f(itemWidth * 0.5), f(transform(min)));
                 ctx.closePath();
                 ctx.stroke();
             }
             else {
                 ctx.fillStyle = itemColor;
-                ctx.fillRect(f(g), f(y), f(itemWidth - g * 2), f(-y));
+                ctx.fillRect(f(g), f(y), f(itemWidth - g * 2), f(transform(min) - y));
             }
 
         }
@@ -542,6 +544,7 @@ const Chart = (() => {
                     if (arr[i].min < _min) _min = arr[i].min;
                     if (arr[i].max > _max) _max = arr[i].max;
                 }
+
                 min = _min;
                 max = _max;
             };
@@ -650,7 +653,7 @@ const Chart = (() => {
                 yLabelCtx.save();
                 yLabelCtx.clearRect(-10, -10, width + 10, height + 10);
 
-                yLabelCtx.translate(0, tHeight + grid.top);
+                yLabelCtx.translate(0, -1);
 
                 // Ylabel Settings
                 yLabelCtx.textBaseline = "middle";
@@ -664,8 +667,8 @@ const Chart = (() => {
 
                 if (yLabelShow !== false) {
                     yLabelCtx.beginPath();
-                    yLabelCtx.moveTo(yLineX, 0);
-                    yLabelCtx.lineTo(yLineX, -tHeight);
+                    yLabelCtx.moveTo(yLineX, grid.top);
+                    yLabelCtx.lineTo(yLineX, grid.top + tHeight);
                     yLabelCtx.closePath();
                     yLabelCtx.stroke();
                 }
@@ -681,14 +684,15 @@ const Chart = (() => {
                 increase = f(increase);
 
                 let base = f(min - min % increase);
+                // console.log(base, increase);
 
                 for (let i = 0; i <= split + 10; i++) {
                     let d = base + increase * i;
+                    let y = map(d, max, min, grid.top + padding.top, grid.top + tHeight - padding.bottom);
+                    // let y = -map(d, min, max, 0, tHeight);
 
-                    if (d > max) break;
-                    else if (d < min) continue;
-
-                    let y = -map(d, min, max, 0, tHeight);
+                    if (y > grid.top + tHeight) continue;
+                    else if (y < grid.top) break;
 
                     if (yLabelShow !== false) {
                         yLabelCtx.fillText(yLabelFormatter(d), yLineX + (yLabelAlign === 'right' ? 10 : -10), y);
@@ -701,6 +705,7 @@ const Chart = (() => {
                         yLabelCtx.stroke();
                     }
                     if (yAxisShow !== false) {
+                        yLabelCtx.save();
                         if (Array.isArray(globalStyle.ySplitAxisDotted)) {
                             yLabelCtx.setLineDash(globalStyle.ySplitAxisDotted);
                         }
@@ -710,6 +715,7 @@ const Chart = (() => {
                         yLabelCtx.lineTo(tWidth + grid.left - 1, y);
                         yLabelCtx.closePath();
                         yLabelCtx.stroke();
+                        yLabelCtx.restore();
                     }
                 }
 
@@ -717,9 +723,9 @@ const Chart = (() => {
             };
 
             let transforms = {
-                candle: tHeight => v => -map(v, min, max, padding.bottom, tHeight - padding.top),
-                line: tHeight => v => -map(v, min, max, padding.bottom, tHeight - padding.top),
-                stick: tHeight => v => -map(v, min, max, padding.bottom, tHeight - padding.top) + padding.bottom
+                candle: tHeight => v => map(v, max, min, grid.top + padding.top, grid.top + tHeight - padding.bottom),
+                line: tHeight => v => map(v, max, min, grid.top + padding.top, grid.top + tHeight - padding.bottom),
+                stick: tHeight => v => map(v, max, min, grid.top + padding.top, grid.top + tHeight - padding.bottom)
             };
 
             // 출력 메소드
@@ -758,7 +764,7 @@ const Chart = (() => {
                 context.clearRect(-10, -10, width + 10, height + 10);
 
                 // Translate
-                context.translate(grid.left, tHeight + grid.top);
+                context.translate(grid.left, 0);
 
                 context.beginPath();
 
@@ -774,7 +780,9 @@ const Chart = (() => {
                             transform,
                             incrementItemColor: style.incrementItemColor,
                             decrementItemColor: style.decrementItemColor,
-                            itemColor
+                            itemColor,
+                            tHeight,
+                            min
                         }, data[i]);
                     }
                     context.translate(itemWidth, 0);
@@ -877,7 +885,8 @@ const Chart = (() => {
                     tWidth,
                     tHeight,
                 } = getTransformSize();
-                let realPrice = max - (map(y, grid.top, tHeight + grid.top, min, max) - min);
+
+                let realPrice = map(y, grid.top + tHeight - padding.bottom, grid.top + padding.top, min, max);
 
                 let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
                 let screenIndex = Math.floor((x - grid.left) / itemWidth);
