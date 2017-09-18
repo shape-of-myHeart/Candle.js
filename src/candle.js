@@ -1339,7 +1339,7 @@ const Chart = (() => {
             $setMethodByKey($key, '_setViewport', _setViewport);
             $setMethodByKey($key, 'dispatchSetViewport', (s, e) => {
                 if (this.$connect.length > 0) {
-                    
+
                     _setViewport(s,e);
 
                     $connect.map(key => {
@@ -1352,9 +1352,9 @@ const Chart = (() => {
             $setMethodByKey($key, '_focusIndex', _focusIndex);
             $setMethodByKey($key, 'dispatchFocusIndex', pos => {
                 if (this.$connect.length > 0) {
-                    
+
                     _focusIndex(pos);
-                    
+
                     $connect.map(key => {
                         $methodByKey[key]._focusIndex(pos);
                     });
@@ -1365,8 +1365,8 @@ const Chart = (() => {
             $setMethodByKey($key, '_unfocusIndex', _unfocusIndex);
             $setMethodByKey($key, 'dispatchUnfocusIndex', () => {
                 if (this.$connect.length > 0) {
-                    
-                    _unFocusIndex();
+
+                    _unfocusIndex();
 
                     $connect.map(key => {
                         $methodByKey[key]._unfocusIndex();
@@ -1382,7 +1382,7 @@ const Chart = (() => {
             $setMethodByKey($key, 'dispatchSetTimeline', () => {
                 if (this.$connect.length > 0) {
                     $connect.map(key => {
-                        $setMethodByKey($key, 'getTimeline', () => timeline);
+                        $setMethodByKey(key, 'getTimeline', () => timeline);
                         $methodByKey[key]._setTimeline();
                     });
                 }
