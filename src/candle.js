@@ -446,6 +446,7 @@ const Chart = (() => {
                 } else {
                     $methodByKey[this.$rootConnect]
                         .dispatchSetViewport(s, e);
+                    return;
                 }
 
                 _setViewport(s, e);
