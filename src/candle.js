@@ -255,6 +255,7 @@ const Chart = (() => {
         return target;
     };
     const applyDateFormatter = (d, f) => {
+        let h;
         return f.replace(/(yyyy|yy|MM|dd|hh|mm|ss)/gi, function (ch) {
             switch (ch) {
                 case "yyyy":
@@ -268,7 +269,7 @@ const Chart = (() => {
                 case "HH":
                     return zf(d.getHours(), 2);
                 case "hh":
-                    return zf((let h = d.getHours() % 12) ? h : 12, 2);
+                    return zf((h = d.getHours() % 12) ? h : 12, 2);
                 case "mm":
                     return zf(d.getMinutes(), 2);
                 case "ss":
