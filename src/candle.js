@@ -68,12 +68,15 @@ const Chart = (() => {
             candle: {
                 incrementItemColor: 'rgb(252,4,4)',
                 decrementItemColor: 'rgb(0,168,0)',
+                decrementItemFill: true,
+                incrementItemFill: true
             },
             line: {
                 itemColor: '#000000'
             },
             stick: {
-                itemColor: '#000000'
+                itemColor: '#000000',
+                itemFill: true
             }
         },
 
@@ -137,7 +140,9 @@ const Chart = (() => {
                      itemWidth,
                      transform,
                      decrementItemColor,
-                     incrementItemColor
+                     incrementItemColor,
+                     incrementItemFill,
+                     decrementItemFill,
                  }, {
                      open,
                      close,
@@ -158,6 +163,23 @@ const Chart = (() => {
                 ctx.lineTo(f(itemWidth * 0.5), f(b));
                 ctx.closePath();
                 ctx.stroke();
+
+                let t1 = f(close > open ? y + h : y);
+
+                ctx.beginPath();
+                ctx.moveTo(f(itemWidth * 0.5), t1);
+                ctx.lineTo(1, t1);
+                ctx.closePath();
+                ctx.stroke();
+
+                let t2 = f(close > open ? y : y + h);
+
+                ctx.beginPath();
+                ctx.moveTo(f(itemWidth * 0.5), t2);
+                ctx.lineTo(itemWidth - 1, t2);
+                ctx.closePath();
+                ctx.stroke();
+
                 return;
             }
 
@@ -173,7 +195,10 @@ const Chart = (() => {
             ctx.closePath();
             ctx.stroke();
 
-            ctx.fillRect(2, f(y), f(itemWidth - 4), f(h));
+            if ((close > open && incrementItemFill !== false) || (close <= open && decrementItemFill !== false)) {
+                ctx.fillRect(2, f(y), f(itemWidth - 4), f(h));
+            }
+
             ctx.strokeRect(2, f(y), f(itemWidth - 4), f(h));
         },
         line: ({
@@ -193,14 +218,17 @@ const Chart = (() => {
                     itemWidth,
                     transform,
                     itemColor,
-                    tHeight,
+                    itemFill,
                     min
                 }, data) => {
-            let y = transform(data);
 
+            let y = transform(data);
             let g = 1;
+
+            ctx.strokeStyle = itemColor;
+            ctx.fillStyle = itemColor;
+
             if (f(itemWidth) <= 3) {
-                ctx.strokeStyle = itemColor;
                 ctx.beginPath();
                 ctx.moveTo(f(itemWidth * 0.5), f(y));
                 ctx.lineTo(f(itemWidth * 0.5), f(transform(min)));
@@ -208,8 +236,10 @@ const Chart = (() => {
                 ctx.stroke();
             }
             else {
-                ctx.fillStyle = itemColor;
-                ctx.fillRect(f(g), f(y), f(itemWidth - g * 2), f(transform(min) - y));
+                if (itemFill !== false) {
+                    ctx.fillRect(f(g), f(y), f(itemWidth - g * 2), f(transform(min) - y));
+                }
+                ctx.strokeRect(f(g), f(y), f(itemWidth - g * 2), f(transform(min) - y));
             }
 
         }
@@ -373,12 +403,14 @@ const Chart = (() => {
             const addLayer = (name, {
                 type,
                 data,
+                show,
                 style
             }) => { /* 라이브러리에 관련된 객체셋팅. */
                 if (layers[name] !== undefined) {
                     return;
                 }
                 let layer = makeCanvas();
+                layer.show = show !== undefined ? show : true;
 
                 layer.type = type || init.layerType;
                 layer.data = data || [];
@@ -390,10 +422,12 @@ const Chart = (() => {
             };
             const setLayer = (name, {
                 type,
+                show,
                 data,
                 style
             }) => {
                 let layer = layers[name];
+                layer.show = show !== undefined ? show : layer.show;
 
                 // type 변경시 type에 영향이 가는 레이어속성들을 새로설정.
                 const baseStyle =
@@ -439,16 +473,22 @@ const Chart = (() => {
             const setViewport = (s, e) => {
                 if (s < 0 || e < 0 || (viewport[0] === s && viewport[1] === e)) return;
 
+                let max = Math.max(s, e), min = Math.min(s, e);
+
+                if (max - min < globalStyle.minSpan) {
+                    min = max - globalStyle.minSpan;
+                }
+
                 if (isRoot() === true) {
                     $methodByKey[$key]
-                        .dispatchSetViewport(s, e);
+                        .dispatchSetViewport(min, max);
                 } else {
                     $methodByKey[this.$rootConnect]
-                        .dispatchSetViewport(s, e);
+                        .dispatchSetViewport(min, max);
                     return;
                 }
 
-                _setViewport(s, e);
+                _setViewport(min, max);
             };
             const getViewport = () => ([viewport[0], viewport[1]]);
 
@@ -513,8 +553,12 @@ const Chart = (() => {
                 let arr = layerMap(layer => {
                     let {
                         data,
-                        type
+                        type,
+                        show
                     } = layer;
+
+                    if (show === false) return {min: Infinity, max: -Infinity};
+
                     let getMin = getMinForTypes[type];
                     let getMax = getMaxForTypes[type];
 
@@ -734,9 +778,10 @@ const Chart = (() => {
                     data,
                     type,
                     context,
-                    canvas,
-                    style
+                    style,
+                    show
                 } = layer;
+
 
                 let width = wrapper.clientWidth,
                     height = wrapper.clientHeight;
@@ -763,6 +808,8 @@ const Chart = (() => {
                 // Clear
                 context.clearRect(-10, -10, width + 10, height + 10);
 
+                if (show === false) return;
+
                 // Translate
                 context.translate(grid.left, 0);
 
@@ -770,17 +817,24 @@ const Chart = (() => {
 
                 let transform = transforms[type](tHeight);
 
+                /* style variable */
+                let {incrementItemColor, decrementItemColor, incrementItemFill, decrementItemFill} = style;
+
                 for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
                     if (data[i] !== null && data[i] !== undefined) {
                         let itemColor = typeof style.itemColor === 'function' ? style.itemColor(i) : style.itemColor;
+                        let itemFill = typeof style.itemFill === 'function' ? style.itemFill(i) : style.itemFill;
 
                         renderItem({
                             ctx: context,
                             itemWidth,
                             transform,
-                            incrementItemColor: style.incrementItemColor,
-                            decrementItemColor: style.decrementItemColor,
+                            incrementItemColor,
+                            decrementItemColor,
+                            incrementItemFill,
+                            decrementItemFill,
                             itemColor,
+                            itemFill,
                             tHeight,
                             min
                         }, data[i]);
@@ -1047,6 +1101,10 @@ const Chart = (() => {
             };
 
             const setTooltip = (options = {}) => {
+
+                overwrite(options.formatters, tooltipOptions.formatters);
+                overwrite(options.titles, tooltipOptions.titles);
+
                 tooltipOptions = overwrite(options, tooltipOptions);
                 reloadTooltip();
             };
@@ -1123,6 +1181,7 @@ const Chart = (() => {
                             width: maxWidth
                         };
                     };
+
                     return (index) => {
                         let {
                             show,
@@ -1131,7 +1190,6 @@ const Chart = (() => {
                             titles,
                             mainCandle
                         } = tooltipOptions;
-
                         tooltipCtx.clearRect(-10, -10, wrapper.clientWidth + 20, wrapper.clientHeight + 20);
 
                         if (show !== true) return;
@@ -1146,10 +1204,11 @@ const Chart = (() => {
                         tooltipCtx.textBaseline = "top";
 
                         for (let name in layers) {
-                            if (filters.indexOf(name) !== -1) {
-                                return;
-                            }
                             let layer = layers[name];
+                            if (filters.indexOf(name) !== -1 || layer.show === false) {
+                                continue;
+                            }
+
                             let text = tooltipForTypes[layer.type]
                             ({
                                 title: titles[name] || name,
