@@ -60,7 +60,9 @@ const Chart = (() => {
             focusYAxisColor: '#888',
             focusYBackgroundColor: '#555',
             focusYLabelColor: '#fff',
-            minSpan: 8
+            minSpan: 8,
+            renderLastIndex: true,
+            lastIndexYLabelColor: '#333'
         },
 
         layerType: 'candle', // candle , line
@@ -72,11 +74,14 @@ const Chart = (() => {
                 incrementItemFill: true
             },
             line: {
-                itemColor: '#000000'
+                itemColor: '#000000',
+                horizon: null
             },
             stick: {
                 itemColor: '#000000',
-                itemFill: true
+                itemFill: true,
+                linear: false,
+                baseLine: null
             }
         },
 
@@ -116,7 +121,8 @@ const Chart = (() => {
                 focusXAxisColor: 'rgba(0, 175, 255, 0.2)',
                 focusXBackgroundColor: 'rgb(10,98,138)',
                 focusYBackgroundColor: '#333',
-                tooltipBackgroundColor: 'rgba(0,0,0,0.5)',
+                tooltipBackgroundColor: 'rgba(0,0,0,0.25)',
+                lastIndexYLabelColor: '#fff'
             },
             layerStyle: {
                 candle: {
@@ -219,16 +225,22 @@ const Chart = (() => {
                     transform,
                     itemColor,
                     itemFill,
-                    min
+                    baseLine,
+                    min,
+                    linear
                 }, data) => {
 
             let y = transform(data);
             let g = 1;
 
+            if (typeof baseLine === 'number') {
+                min = baseLine;
+            }
+
             ctx.strokeStyle = itemColor;
             ctx.fillStyle = itemColor;
 
-            if (f(itemWidth) <= 3) {
+            if (f(itemWidth) <= 3 || linear === true) {
                 ctx.beginPath();
                 ctx.moveTo(f(itemWidth * 0.5), f(y));
                 ctx.lineTo(f(itemWidth * 0.5), f(transform(min)));
@@ -387,6 +399,7 @@ const Chart = (() => {
 
             let min;
             let max;
+            let mainCandle;
 
             // X,Y 축 캔버스 Context 정의
             // 라벨이 업데이트 될 때.
@@ -396,6 +409,7 @@ const Chart = (() => {
             const yLabelCtx = makeCanvas().context;
             const xLabelCtx = makeCanvas().context;
 
+            const supportCtx = makeCanvas().context;
             const floatCtx = makeCanvas(1).context;
             const tooltipCtx = makeCanvas(2).context;
 
@@ -440,7 +454,6 @@ const Chart = (() => {
                 layer.style = overwrite(style, baseStyle);
 
                 renderAll();
-                reloadTooltip();
             };
             const layerMap = (func, formatter) => {
                 let rObj = [];
@@ -460,9 +473,6 @@ const Chart = (() => {
 
                 let max = Math.max(s, e), min = Math.min(s, e);
 
-                if (max - min < globalStyle.minSpan) {
-                    min = max - globalStyle.minSpan;
-                }
                 viewport[0] = min;
                 viewport[1] = max;
 
@@ -475,14 +485,18 @@ const Chart = (() => {
 
                 let max = Math.max(s, e), min = Math.min(s, e);
 
-                if (max - min < globalStyle.minSpan) {
-                    min = max - globalStyle.minSpan;
-                }
-
                 if (isRoot() === true) {
+                    if (max - min < globalStyle.minSpan) {
+                        min = max - globalStyle.minSpan
+                    }
                     $methodByKey[$key]
                         .dispatchSetViewport(min, max);
                 } else {
+                    let minSpan = $methodByKey[this.$rootConnect].minSpan();
+                    if (max - min < minSpan) {
+                        min = max - minSpan;
+                    }
+
                     $methodByKey[this.$rootConnect]
                         .dispatchSetViewport(min, max);
                     return;
@@ -494,14 +508,13 @@ const Chart = (() => {
 
             // 타임라인 메소드
             const setTimeline = pTimeline => {
-                timeline = [];
-
                 for (let i = 0, l = pTimeline.length; i < l; i++) {
-                    timeline.push(new Date(pTimeline[i]));
+                    if (typeof pTimeline[i] !== 'string') continue;
+                    pTimeline[i] = new Date(pTimeline[i]);
                 }
-                $timeline = timeline;
+                $timeline = timeline = pTimeline;
 
-                renderAll();
+                $methodByKey[$key]._setTimeline();
 
                 if (isRoot() === true) {
                     $methodByKey[$key]
@@ -528,6 +541,7 @@ const Chart = (() => {
             const setStyle = pStyle => {
                 globalStyle = overwrite(pStyle, globalStyle);
                 setGrid();
+                updateWrapperStyle();
                 renderAll();
             };
             let yLabelFormatter = f;
@@ -554,7 +568,8 @@ const Chart = (() => {
                     let {
                         data,
                         type,
-                        show
+                        show,
+                        style
                     } = layer;
 
                     if (show === false) return {min: Infinity, max: -Infinity};
@@ -565,14 +580,21 @@ const Chart = (() => {
                     let min = Infinity,
                         max = -Infinity;
 
-                    for (let i = viewport[0], l = viewport[1]; i < l; i++) {
-                        if (data[i] === null || data[i] === undefined) continue;
+                    if (type === 'line' && style.horizon === true) {
+                        return {
+                            min: data[0],
+                            max: data[0]
+                        };
+                    } else {
+                        for (let i = viewport[0], l = viewport[1]; i < l; i++) {
+                            if (data[i] === null || data[i] === undefined) continue;
 
-                        let _min = getMin(data[i]);
-                        let _max = getMax(data[i]);
+                            let _min = getMin(data[i]);
+                            let _max = getMax(data[i]);
 
-                        if (min > _min) min = _min;
-                        if (max < _max) max = _max;
+                            if (min > _min) min = _min;
+                            if (max < _max) max = _max;
+                        }
                     }
 
                     return {
@@ -730,7 +752,7 @@ const Chart = (() => {
                 let base = f(min - min % increase);
                 // console.log(base, increase);
 
-                for (let i = 0; i <= split + 10; i++) {
+                for (let i = -10; i <= split + 10; i++) {
                     let d = base + increase * i;
                     let y = map(d, max, min, grid.top + padding.top, grid.top + tHeight - padding.bottom);
                     // let y = -map(d, min, max, 0, tHeight);
@@ -813,40 +835,49 @@ const Chart = (() => {
                 // Translate
                 context.translate(grid.left, 0);
 
-                context.beginPath();
-
+                /* style variable */
+                let {incrementItemColor, decrementItemColor, incrementItemFill, decrementItemFill, baseLine, linear} = style;
                 let transform = transforms[type](tHeight);
 
-                /* style variable */
-                let {incrementItemColor, decrementItemColor, incrementItemFill, decrementItemFill} = style;
+                context.beginPath();
 
-                for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
-                    if (data[i] !== null && data[i] !== undefined) {
-                        let itemColor = typeof style.itemColor === 'function' ? style.itemColor(i) : style.itemColor;
-                        let itemFill = typeof style.itemFill === 'function' ? style.itemFill(i) : style.itemFill;
+                if (layer.type === 'line' && style.horizon === true) {
+                    let y = transform(data[0]);
+                    context.strokeStyle = style.itemColor;
 
-                        renderItem({
-                            ctx: context,
-                            itemWidth,
-                            transform,
-                            incrementItemColor,
-                            decrementItemColor,
-                            incrementItemFill,
-                            decrementItemFill,
-                            itemColor,
-                            itemFill,
-                            tHeight,
-                            min
-                        }, data[i]);
+                    context.moveTo(itemWidth / 2, y);
+                    context.lineTo(tWidth - itemWidth / 2, y);
+                } else {
+                    for (let i = viewport[0], l = viewport[1], s = f((viewport[1] - viewport[0]) / 5); i < l; i++) {
+                        if (data[i] !== null && data[i] !== undefined) {
+
+                            let itemColor = typeof style.itemColor === 'function' ? style.itemColor(i) : style.itemColor;
+                            let itemFill = typeof style.itemFill === 'function' ? style.itemFill(i) : style.itemFill;
+
+                            renderItem({
+                                ctx: context,
+                                itemWidth,
+                                transform,
+                                incrementItemColor,
+                                decrementItemColor,
+                                incrementItemFill,
+                                decrementItemFill,
+                                itemColor,
+                                itemFill,
+                                tHeight,
+                                baseLine,
+                                min,
+                                linear
+                            }, data[i]);
+                        }
+                        context.translate(itemWidth, 0);
                     }
-                    context.translate(itemWidth, 0);
                 }
                 context.stroke();
                 context.closePath();
 
                 context.restore();
             };
-
             const renderAll = () => {
                 updateMinMax();
 
@@ -857,8 +888,33 @@ const Chart = (() => {
 
                 renderXLabel();
                 renderYLabel();
-
                 reloadTooltip();
+                renderLastIndex();
+            };
+
+            const renderLastIndex = () => {
+                if (!mainCandle || globalStyle.renderLastIndex === false) return;
+                focusIndex({
+                    ctx: supportCtx,
+                    index: viewport[1] - 1,
+                    realPrice: layers[mainCandle].data[viewport[1] - 1].close,
+
+                    focusYLabelColor: globalStyle.lastIndexYLabelColor,
+                    focusYAxisColor: 'rgba(0,0,0,0)',
+                    focusYBackgroundColor: layers[mainCandle].data[viewport[1] - 1].close > layers[mainCandle].data[viewport[1] - 1].open ?
+                        layers[mainCandle].style.incrementItemColor :
+                        layers[mainCandle].style.decrementItemColor,
+                    onlyRender: true
+
+                }, false, true, false);
+            };
+
+            const setMainCandle = layerName => {
+                if (layers[layerName] && layers[layerName].type === 'candle') {
+                    mainCandle = layerName;
+                    reloadTooltip();
+                    renderLastIndex();
+                }
             };
 
             // 이벤트 리스너 등록
@@ -868,7 +924,8 @@ const Chart = (() => {
                     e.preventDefault();
 
                     // speed : 10
-                    let zoomSpeed = 10;
+                    let zoomSpeed = Math.round((viewport[1] - viewport[0]) / 8);
+                    // let zoomSpeed = 10;
 
                     let velocity = (e.deltaY / 100) * -zoomSpeed;
                     let nextViewport = [viewport[0] + velocity, viewport[1]];
@@ -904,19 +961,23 @@ const Chart = (() => {
             window.addEventListener('mousemove', e => {
                 let delta = prevMouseX - e.clientX;
                 // 이동값이 10px 이상일 경우, 좌 또는 우로 데이터 1개만큼 뷰포트 이동.
-                if (mousedown === true && prevMouseX !== null && Math.abs(delta) >= 10) {
+                if (mousedown === true) {
                     e.preventDefault();
-                    // speed : 5
-                    let moveSpeed = 5;
 
-                    let direction = delta < 0 ? -1 : 1,
-                        velocity = direction * moveSpeed,
-                        nextViewport = [viewport[0] + velocity, viewport[1] + velocity];
+                    if (prevMouseX !== null && Math.abs(delta) >= 1) {
+                        // speed : 10
+                        let moveSpeed = Math.round((viewport[1] - viewport[0]) / 8);
+                        // let moveSpeed = 10;
 
-                    if (nextViewport[0] < 0 || nextViewport[1] > $timeline.length) return;
+                        let direction = delta < 0 ? -1 : 1,
+                            velocity = direction * moveSpeed,
+                            nextViewport = [viewport[0] + velocity, viewport[1] + velocity];
 
-                    setViewport(nextViewport[0], nextViewport[1]);
-                    prevMouseX = e.clientX;
+                        if (nextViewport[0] < 0 || nextViewport[1] > $timeline.length) return;
+
+                        setViewport(nextViewport[0], nextViewport[1]);
+                        prevMouseX = e.clientX;
+                    }
                 }
             });
             // 탐색
@@ -926,58 +987,83 @@ const Chart = (() => {
                     y: e.layerY
                 });
             });
+
             wrapper.addEventListener('mouseout', e => {
                 unfocusIndex();
             });
 
             let previousFocusedIndex;
             const _focusIndex = ({
+                                     ctx = floatCtx,
                                      x,
-                                     y
+                                     y,
+                                     index,
+                                     realPrice,
+
+                                     focusXBackgroundColor = globalStyle.focusXBackgroundColor,
+                                     focusXLabelColor = globalStyle.focusXLabelColor,
+                                     focusXAxisColor = globalStyle.focusXAxisColor,
+
+                                     focusYAxisColor = globalStyle.focusYAxisColor,
+                                     focusYBackgroundColor = globalStyle.focusYBackgroundColor,
+                                     focusYLabelColor = globalStyle.focusYLabelColor,
+
+                                     onlyRender = false
                                  }, xFocus = true, yFocus = false, clear = true) => {
                 let {
                     tWidth,
                     tHeight,
                 } = getTransformSize();
 
-                let realPrice = map(y, grid.top + tHeight - padding.bottom, grid.top + padding.top, min, max);
+                if (realPrice === undefined) {
+                    realPrice = map(y, grid.top + tHeight - padding.bottom, grid.top + padding.top, min, max);
+                } else {
+                    y = map(realPrice, min, max, grid.top + tHeight - padding.bottom, grid.top + padding.top);
+                }
 
                 let itemWidth = (tWidth) / (viewport[1] - viewport[0]);
-                let screenIndex = Math.floor((x - grid.left) / itemWidth);
-                let index = viewport[0] + screenIndex;
+                let screenIndex;
+
+                if (index === undefined) {
+                    screenIndex = Math.floor((x - grid.left) / itemWidth);
+                    index = viewport[0] + screenIndex;
+                } else {
+                    index -= viewport[0];
+                }
 
                 if (previousFocusedIndex === index) {
                     return;
                 }
+
                 if (index < 0 || index >= viewport[1]) {
-                    floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
+                    ctx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
                     return;
                 }
 
-                floatCtx.save();
+                ctx.save();
 
                 if (clear === true) {
-                    floatCtx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
+                    ctx.clearRect(-10, -10, wrapper.clientWidth + 10, wrapper.clientHeight + 10);
                 }
 
-                floatCtx.translate(grid.left, 0);
-                floatCtx.font = `12px ${globalStyle.fontFamily}`;
+                ctx.translate(grid.left, 0);
+                ctx.font = `12px ${globalStyle.fontFamily}`;
 
                 if (xFocus === true) {
 
-                    floatCtx.textAlign = globalStyle.xLabelAlign;
-                    floatCtx.textBaseline = 'middle';
+                    ctx.textAlign = globalStyle.xLabelAlign;
+                    ctx.textBaseline = 'middle';
 
-                    floatCtx.strokeStyle = floatCtx.fillStyle = globalStyle.focusXAxisColor;
+                    ctx.strokeStyle = floatCtx.fillStyle = focusXAxisColor;
                     if (globalStyle.focusXAxisExtend === true) {
-                        floatCtx.fillRect(screenIndex * itemWidth, grid.top, itemWidth, tHeight);
+                        ctx.fillRect(screenIndex * itemWidth, grid.top, itemWidth, tHeight);
                     } else {
                         let lx = screenIndex * itemWidth + itemWidth / 2;
-                        floatCtx.beginPath();
-                        floatCtx.moveTo(lx, 0);
-                        floatCtx.lineTo(lx, grid.top + tHeight);
-                        floatCtx.closePath();
-                        floatCtx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(lx, 0);
+                        ctx.lineTo(lx, grid.top + tHeight);
+                        ctx.closePath();
+                        ctx.stroke();
                     }
                     if (globalStyle.xLabelShow !== false) {
                         /* x focus */
@@ -1009,27 +1095,27 @@ const Chart = (() => {
                         // floatCtx.fillStyle = globalStyle.backgroundColor;
                         // floatCtx.fillRect(tx + itemWidth / 2,ty,textWidth, gy - 1);
 
-                        floatCtx.fillStyle = globalStyle.focusXBackgroundColor;
-                        floatCtx.fillRect(tx, ty, textWidth + paddingLR * 2, gy);
+                        ctx.fillStyle = focusXBackgroundColor;
+                        ctx.fillRect(tx, ty, textWidth + paddingLR * 2, gy);
 
-                        floatCtx.fillStyle = globalStyle.focusXLabelColor;
-                        floatCtx.fillText(text, tx + paddingLR, ty + (gy / 2));
+                        ctx.fillStyle = focusXLabelColor;
+                        ctx.fillText(text, tx + paddingLR, ty + (gy / 2));
 
                     }
                 }
                 /* y focus */
                 if (yFocus === true && grid.top + tHeight >= y && grid.top <= y) {
 
-                    floatCtx.textBaseline = 'middle';
+                    ctx.textBaseline = 'middle';
 
-                    floatCtx.strokeStyle = globalStyle.focusYAxisColor;
-                    floatCtx.fillStyle = globalStyle.focusYBackgroundColor;
+                    ctx.strokeStyle = focusYAxisColor;
+                    ctx.fillStyle = focusYBackgroundColor;
 
-                    floatCtx.beginPath();
-                    floatCtx.moveTo(0, y);
-                    floatCtx.lineTo(tWidth, y);
-                    floatCtx.closePath();
-                    floatCtx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(tWidth, y);
+                    ctx.closePath();
+                    ctx.stroke();
 
                     let x, w, h = 20, tx;
 
@@ -1037,31 +1123,33 @@ const Chart = (() => {
                         x = -grid.left;
                         w = grid.left;
                         tx = -10;
-                        floatCtx.textAlign = 'right';
+                        ctx.textAlign = 'right';
                     } else {
                         x = tWidth;
                         w = grid.right;
                         tx = tWidth + 10;
-                        floatCtx.textAlign = 'left';
+                        ctx.textAlign = 'left';
                     }
-                    floatCtx.fillRect(x, y - h / 2, w, h);
+                    ctx.fillRect(x, y - h / 2, w, h);
 
-                    floatCtx.fillStyle = globalStyle.focusYLabelColor;
-                    floatCtx.fillText(yLabelFormatter(realPrice), tx, y);
+                    ctx.fillStyle = focusYLabelColor;
+                    ctx.fillText(yLabelFormatter(realPrice), tx, y);
 
                 }
 
-                floatCtx.restore();
+                ctx.restore();
 
-                let datas =
-                    layerMap(
-                        (layer, name) => layer.data[index] === 'object' ? overwrite(null, layer.data[index]) : layer.data[index],
-                        name => name
-                    );
-                let time = new Date($timeline[index]);
+                if (onlyRender !== true) {
+                    let datas =
+                        layerMap(
+                            (layer, name) => layer.data[index] === 'object' ? overwrite(null, layer.data[index]) : layer.data[index],
+                            name => name
+                        );
+                    let time = new Date($timeline[index]);
 
-                this.onSelect(time, datas);
-                showTooltip(index);
+                    this.onSelect(time, datas);
+                    showTooltip(index);
+                }
             };
             const focusIndex = pos => {
                 if (isRoot() === true) {
@@ -1096,8 +1184,7 @@ const Chart = (() => {
                 show: false,
                 forammters: {},
                 titles: {},
-                filters: [],
-                mainCandle: ''
+                filters: []
             };
 
             const setTooltip = (options = {}) => {
@@ -1187,9 +1274,9 @@ const Chart = (() => {
                             show,
                             filters,
                             formatters,
-                            titles,
-                            mainCandle
+                            titles
                         } = tooltipOptions;
+
                         tooltipCtx.clearRect(-10, -10, wrapper.clientWidth + 20, wrapper.clientHeight + 20);
 
                         if (show !== true) return;
@@ -1445,6 +1532,9 @@ const Chart = (() => {
             });
 
             $setMethodByKey($key, '_setTimeline', () => {
+                if ($timeline.length < viewport[1]) {
+                    viewport[1] = $timeline.length;
+                }
                 renderAll();
             });
 
@@ -1463,6 +1553,8 @@ const Chart = (() => {
                 this.$rootConnect = null;
                 renderAll();
             });
+
+            $setMethodByKey($key, 'minSpan', () => globalStyle.minSpan);
 
             // 이후 모든 setMethodByKey($key,...) 실행 후 $On 으로 등록한 함수를 실행한다.
             $setMethodByKey($key, '$On', name => {
@@ -1535,12 +1627,38 @@ const Chart = (() => {
                 setYLabelFormatter.apply(this, argv);
                 return this;
             }
+            this.setMainCandle = (...argv) => {
+                setMainCandle.apply(this, argv);
+                return this;
+            }
+            this.getViewport = () => ([viewport[0], viewport[1]]);
 
+            this.showLayers = arr => {
+                for (let i = 0; i < arr.length; i++) {
+                    let layer = layers[arr[i]];
+                    if (layer) {
+                        layer.show = true;
+                    }
+                    renderAll();
+                }
+                return this;
+            };
+            this.hideLayers = arr => {
+                for (let i = 0; i < arr.length; i++) {
+                    let layer = layers[arr[i]];
+                    if (layer) {
+                        layer.show = false;
+                    }
+                    renderAll();
+                }
+                return this;
+            };
 
             this.render = () => {
                 renderAll();
                 return this;
             };
+
 
             this.onSelect = () => {
             };
