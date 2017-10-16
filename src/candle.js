@@ -61,7 +61,6 @@ const Chart = (() => {
             focusYBackgroundColor: '#555',
             focusYLabelColor: '#fff',
             minSpan: 8,
-            renderLastIndex: true,
             lastIndexYLabelColor: '#333'
         },
 
@@ -72,19 +71,22 @@ const Chart = (() => {
                 decrementItemColor: 'rgb(0,168,0)',
                 decrementItemFill: true,
                 incrementItemFill: true,
-                renderMinMaxInViewport: false
+                renderMinMaxInViewport: false,
+                renderLastIndex: true,
             },
             line: {
                 itemColor: '#000000',
                 horizon: null,
-                renderMinMaxInViewport: false
+                renderMinMaxInViewport: false,
+                renderLastIndex: true,
             },
             stick: {
                 itemColor: '#000000',
                 itemFill: true,
                 linear: false,
                 baseLine: null,
-                renderMinMaxInViewport: false
+                renderMinMaxInViewport: false,
+                renderLastIndex: true,
             }
         },
 
@@ -169,6 +171,21 @@ const Chart = (() => {
         line: item => item,
         stick: item => item
     };
+    const getItemColorForTypes = (layer, index) => {
+        if (layer.type === 'candle') {
+            return layer.data[index].close > layer.data[index].open ?
+                layer.style.incrementItemColor :
+                layer.style.decrementItemColor;
+        }
+        else if (layer.type === 'line') {
+            return layer.style.itemColor;
+        }
+
+        else if (layer.type === 'stick') {
+            return typeof layer.style.itemColor === 'function' ?
+                layer.style.itemColor(index) : layer.style.itemColor;
+        }
+    };
 
     // 유틸 메소드
     const map = (n, a, b, c, d) => ((n - a) / (b - a)) * (d - c) + c;
@@ -223,12 +240,6 @@ const Chart = (() => {
 
     // private
     const $methodByKey = {};
-
-    const $setMethodByKey = (key, name, func) => {
-        if (!$methodByKey[key]) $methodByKey[key] = [];
-        $methodByKey[key][name] = func;
-        name !== '$On' && $methodByKey[key].$On && $methodByKey[key].$On(name);
-    };
     const $getMethodByKey = (key, name) => $methodByKey[key][name];
 
     class Chart {
@@ -237,8 +248,10 @@ const Chart = (() => {
             if (wrapper === null) return;
 
             let $key;
+
             while ($keys.indexOf($key = Math.random() + Math.random() + Math.random()) !== -1) {
             }
+            let $method = $methodByKey[$key] = {};
 
             let theme;
             const initLayerStyle = {};
@@ -285,7 +298,7 @@ const Chart = (() => {
 
             let min;
             let max;
-            let mainCandle;
+            let mainLayer;
 
             // X,Y 축 캔버스 Context 정의
             // 라벨이 업데이트 될 때.
@@ -306,9 +319,8 @@ const Chart = (() => {
                 show,
                 style
             }) => { /* 라이브러리에 관련된 객체셋팅. */
-                if (layers[name] !== undefined) {
-                    return;
-                }
+                if (typeof name !== 'string' || layers[name] !== undefined) return;
+
                 let layer = makeCanvas();
                 layer.show = show !== undefined ? show : true;
 
@@ -400,11 +412,10 @@ const Chart = (() => {
                 }
                 $timeline = timeline = pTimeline;
 
-                $methodByKey[$key]._setTimeline();
+                $method.setTimeline();
 
                 if (isRoot() === true) {
-                    $methodByKey[$key]
-                        .dispatchSetTimeline();
+                    $method.dispatchSetTimeline();
                 }
             };
 
@@ -639,7 +650,6 @@ const Chart = (() => {
                 increase = f(increase);
 
                 let base = f(min - min % increase);
-                // console.log(base, increase);
 
                 for (let i = -10; i <= split + 10; i++) {
                     let d = base + increase * i;
@@ -978,25 +988,36 @@ const Chart = (() => {
                 showTooltip(i);
             };
 
-            const renderLastIndex = () => {
-                if (!mainCandle || globalStyle.renderLastIndex === false) return;
-                focusIndex({
-                    ctx: supportCtx,
-                    index: viewport[1] - 1,
-                    realPrice: layers[mainCandle].data[viewport[1] - 1].close,
+            const
+                renderLastIndex = () => {
+                    let layer = layers[mainLayer];
+                    if (!mainLayer || layer.style.renderLastIndex === false) return;
+                    let lastIndex = viewport[1] - 1, realPrice;
 
-                    focusYLabelColor: globalStyle.lastIndexYLabelColor,
-                    focusYAxisColor: 'rgba(0,0,0,0)',
-                    focusYBackgroundColor: layers[mainCandle].data[viewport[1] - 1].close > layers[mainCandle].data[viewport[1] - 1].open ?
-                        layers[mainCandle].style.incrementItemColor :
-                        layers[mainCandle].style.decrementItemColor,
-                    onlyRender: true
-                }, false, true, false);
+                    if (layer.type === 'candle') realPrice = layer.data[lastIndex].close;
+                    else if (layer.type === 'stick') realPrice = layer.data[lastIndex];
+                    else if (layer.type === 'line') realPrice = layer.data[lastIndex];
+
+                    if (realPrice === undefined) return;
+
+                    focusIndex({
+                        ctx: supportCtx,
+                        index: lastIndex,
+                        realPrice,
+                        focusYLabelColor: globalStyle.lastIndexYLabelColor,
+                        focusYAxisColor: 'rgba(0,0,0,0)',
+                        focusYBackgroundColor: getItemColorForTypes(layer, lastIndex),
+                        onlyRender: true
+                    }, false, true, false);
+                };
+
+            const unsetMainLayer = () => {
+                mainLayer = undefined;
             };
 
-            const setMainCandle = layerName => {
-                if (layers[layerName] && layers[layerName].type === 'candle') {
-                    mainCandle = layerName;
+            const setMainLayer = layerName => {
+                if (layers[layerName]) {
+                    mainLayer = layerName;
                     reloadTooltip();
                     renderLastIndex();
                 }
@@ -1236,7 +1257,6 @@ const Chart = (() => {
                         );
                     let time = new Date($timeline[index]);
 
-                    this.onSelect(time, datas);
                     showTooltip(index);
                 }
             };
@@ -1422,18 +1442,6 @@ const Chart = (() => {
                             tHeight
                         } = getTransformSize();
 
-                        // 타이틀 세팅
-                        // const titleFont = "bold 18px 'Apple SD Gothic Neo',arial,sans-serif";
-                        // tooltipCtx.save();
-                        // tooltipCtx.font = titleFont;
-
-                        // let title = applyDateFormatter(timeline[index], 'yyyy-MM-dd hh:mm:ss'),
-                        //     titleWidth = tooltipCtx.measureText(title).width;
-
-                        // rWidth = Math.max(rWidth, titleWidth + 10);
-                        // tooltipCtx.restore();
-                        /////////////////////////
-
                         tooltipCtx.translate(grid.left, grid.top);
 
                         if (globalStyle.tooltipXAlign === 'left') {
@@ -1448,24 +1456,11 @@ const Chart = (() => {
                             tooltipCtx.translate(0, tHeight - rHeight - globalStyle.tooltipYMargin);
                         }
 
-                        // // 타이틀 그리기
-                        // tooltipCtx.save();
-
-                        // tooltipCtx.font = titleFont;
-                        // tooltipCtx.fillStyle = globalStyle.tooltipTitleColor;
-
-                        // tooltipCtx.fillText(title, 0, 0);
-
-                        // tooltipCtx.restore();
-                        // /////////////////////////
-
-                        // tooltipCtx.translate(0, 23);
-
-                        if (mainCandle) {
+                        if (mainLayer) {
                             let {
                                 data,
                                 style
-                            } = layers[mainCandle];
+                            } = layers[mainLayer];
 
                             if (data[index]) {
                                 let {
@@ -1473,15 +1468,14 @@ const Chart = (() => {
                                     close
                                 } = data[index];
 
-                                tooltipCtx.fillStyle = open < close ?
-                                    style.incrementItemColor : style.decrementItemColor;
+                                tooltipCtx.fillStyle = getItemColorForTypes(layers[mainLayer], index);
 
                                 tooltipCtx.fillRect(0, 0, globalStyle.tooltipCandleThick, rHeight);
                                 tooltipCtx.translate(globalStyle.tooltipCandleThick, 0);
                             }
                         }
 
-                        if (!mainCandle && globalStyle.tooltipXAlign === 'right') {
+                        if (!mainLayer && globalStyle.tooltipXAlign === 'right') {
                             tooltipCtx.translate(globalStyle.tooltipCandleThick, 0);
                         }
 
@@ -1554,7 +1548,8 @@ const Chart = (() => {
                 }
 
                 // 레퍼런스공유로 메모리 낭비를 줄인다.
-                $setMethodByKey(b.$key, 'getTimeline', $getMethodByKey($key, 'getTimeline'));
+                $methodByKey[b.$key].getTimeline = () => timeline;
+                $methodByKey[b.$key].refreshTimeline();
 
                 // onSetViewport 함수 참조.
 
@@ -1578,80 +1573,63 @@ const Chart = (() => {
                 renderAll();
             };
 
-            // private 함수 참조 가능.
-            $setMethodByKey($key, 'getTimeline', () => timeline);
+            // 디스패처 설정
 
-            $setMethodByKey($key, '_setViewport', _setViewport);
-            $setMethodByKey($key, 'dispatchSetViewport', (s, e) => {
-                if (this.$connect.length > 0) {
+            const makeDispatcher = (innerFunction, innerFunctionName) =>
+                (...argv) => {
+                    if (this.$connect.length > 0) {
 
-                    _setViewport(s, e);
+                        innerFunction.apply(this, argv);
 
-                    $connect.map(key => {
-                        $methodByKey[key]._setViewport(s, e);
-                    });
+                        for (let i in $connect) {
+                            $methodByKey[$connect[i]][innerFunctionName].apply(this, argv);
+                        }
 
-                }
-            });
+                    }
+                };
 
-            $setMethodByKey($key, '_focusIndex', _focusIndex);
-            $setMethodByKey($key, 'dispatchFocusIndex', pos => {
-                if (this.$connect.length > 0) {
+            $method.getTimeline = () => timeline;
+            $method.refreshTimeline = () => $timeline = $methodByKey[$key].getTimeline();
 
-                    _focusIndex(pos);
+            $method.setViewport = _setViewport;
+            $method.dispatchSetViewport = makeDispatcher(_setViewport, 'setViewport');
 
-                    $connect.map(key => {
-                        $methodByKey[key]._focusIndex(pos);
-                    });
+            $method.focusIndex = _focusIndex;
+            $method.dispatchFocusIndex = makeDispatcher(_focusIndex, 'focusIndex');
 
-                }
-            });
+            $method.unfocusIndex = _unfocusIndex;
+            $method.dispatchUnfocusIndex = makeDispatcher(_unfocusIndex, 'unfocusIndex');
 
-            $setMethodByKey($key, '_unfocusIndex', _unfocusIndex);
-            $setMethodByKey($key, 'dispatchUnfocusIndex', () => {
-                if (this.$connect.length > 0) {
-
-                    _unfocusIndex();
-
-                    $connect.map(key => {
-                        $methodByKey[key]._unfocusIndex();
-                    });
-
-                }
-            });
-
-            $setMethodByKey($key, '_setTimeline', () => {
+            $method.setTimeline = () => {
                 if ($timeline.length < viewport[1]) {
                     viewport[1] = $timeline.length;
                 }
                 renderAll();
-            });
+            };
 
-            $setMethodByKey($key, 'dispatchSetTimeline', () => {
+            $method.dispatchSetTimeline = () => {
                 if (this.$connect.length > 0) {
-                    $connect.map(key => {
-                        $setMethodByKey(key, 'getTimeline', () => timeline);
-                        $methodByKey[key]._setTimeline();
-                    });
-                }
-            });
 
-            $setMethodByKey($key, 'connect', () => connect);
-            $setMethodByKey($key, 'disconnect', () => {
-                $setMethodByKey($key, 'getTimeline', () => timeline);
+                    for (let i in $connect) {
+                        let key = $connect[i];
+                        $methodByKey[key].getTimeline = () => timeline;
+                        $methodByKey[key].refreshTimeline();
+                    }
+
+                }
+            };
+
+            $method.connect = () => connect;
+            $method.disconnect = () => {
+
+                $method.getTimeline = () => timeline;
+                $method.refreshTimeline();
+
                 this.$rootConnect = null;
                 renderAll();
-            });
+            };
 
-            $setMethodByKey($key, 'minSpan', () => globalStyle.minSpan);
-
-            // 이후 모든 setMethodByKey($key,...) 실행 후 $On 으로 등록한 함수를 실행한다.
-            $setMethodByKey($key, '$On', name => {
-                // getTimeline 함수가 변경되면, 실제제적인 차트 메소드들에 쓰이는 $timeline 변수를 교체한다.
-                if (name === 'getTimeline') {
-                    $timeline = $getMethodByKey($key, 'getTimeline')();
-                }
-            });
+            $method.minSpan = () => globalStyle.minSpan;
 
             /* return(define) public logics */
             this.$key = $key;
@@ -1659,68 +1637,29 @@ const Chart = (() => {
             this.$rootConnect = null;
 
             const isRoot = () => this.$rootConnect === null;
-
-            this.addLayer = (...argv) => {
-                addLayer.apply(this, argv);
+            const makePublic = (innerFunction) => (...argv) => {
+                innerFunction.apply(this, argv);
                 return this;
-            }
-            this.setLayer = (...argv) => {
-                setLayer.apply(this, argv);
-                return this;
-            }
-            this.setViewport = (...argv) => {
-                setViewport.apply(this, argv);
-                return this;
-            }
-            this.getViewport = (...argv) => {
-                getViewport.apply(this, argv);
-                return this;
-            }
-            this.setTimeline = (...argv) => {
-                setTimeline.apply(this, argv);
-                return this;
-            }
-            this.setPadding = (...argv) => {
-                setPadding.apply(this, argv);
-                return this;
-            }
-            this.setStyle = (...argv) => {
-                setStyle.apply(this, argv);
-                return this;
-            }
-            this.setTheme = (...argv) => {
-                setTheme.apply(this, argv);
-                return this;
-            }
-            this.resize = (...argv) => {
-                resize.apply(this, argv);
-                return this;
-            }
-            this.setDateFormatter = (...argv) => {
-                setDateFormatter.apply(this, argv);
-                return this;
-            }
-            this.setTooltip = (...argv) => {
-                setTooltip.apply(this, argv);
-                return this;
-            }
-            this.connect = (...argv) => {
-                connect.apply(this, argv);
-                return this;
-            }
-            this.disconnect = (...argv) => {
-                disconnect.apply(this, argv);
-                return this;
-            }
-            this.setYLabelFormatter = (...argv) => {
-                setYLabelFormatter.apply(this, argv);
-                return this;
-            }
-            this.setMainCandle = (...argv) => {
-                setMainCandle.apply(this, argv);
-                return this;
-            }
-            this.getViewport = () => ([viewport[0], viewport[1]]);
+            };
+            this.addLayer = makePublic(addLayer);
+            this.setLayer = makePublic(setLayer);
+            this.setViewport = makePublic(setViewport);
+            this.getViewport = makePublic(getViewport);
+            this.setTimeline = makePublic(setTimeline);
+            this.setPadding = makePublic(setPadding);
+            this.setStyle = makePublic(setStyle);
+            this.setTheme = makePublic(setTheme);
+            this.resize = makePublic(resize);
+            this.setDateFormatter = makePublic(setDateFormatter);
+            this.setTooltip = makePublic(setTooltip);
+            this.connect = makePublic(connect);
+            this.disconnect = makePublic(disconnect);
+            this.setYLabelFormatter = makePublic(setYLabelFormatter);
+            this.setMainLayer = makePublic(setMainLayer);
+            this.unsetMainLayer = makePublic(unsetMainLayer);
+            this.getViewport = makePublic(getViewport);
+            this.render = makePublic(renderAll);
+            this.renderTooltip = makePublic(renderTooltip);
 
             this.showLayers = arr => {
                 for (let i = 0; i < arr.length; i++) {
@@ -1732,6 +1671,7 @@ const Chart = (() => {
                 }
                 return this;
             };
+
             this.hideLayers = arr => {
                 for (let i = 0; i < arr.length; i++) {
                     let layer = layers[arr[i]];
@@ -1740,20 +1680,6 @@ const Chart = (() => {
                     }
                     renderAll();
                 }
-                return this;
-            };
-
-            this.render = () => {
-                renderAll();
-                return this;
-            };
-
-
-            this.onSelect = () => {
-            };
-
-            this.renderTooltip = (...argv) => {
-                renderTooltip.apply(this, argv);
                 return this;
             };
 
